@@ -11,11 +11,8 @@
 
   The package uses the formula M = Mc + Ms, where matrix Mc is build from a 
   consistency condition (Mc N = R) and matrix Ms is build from a stability 
-  condition (Ms N = 0), to generate mass and stiffness matrices for a variety 
-  of physics packages: flow, transport, thermal, and geomechanics. 
+  condition  and Ms N = 0, to generate mass and stiffness matrices.
   The material properties are imbedded into the the matrix Mc. 
-
-  Notation used below: M (mass), W (inverse of M), A (stiffness).
 */
 
 #ifndef AMANZI_MFD3D_ELASTICITY_HH_
@@ -37,15 +34,15 @@ namespace WhetStone {
 class MFD3D_Elasticity : public MFD3D { 
  public:
   MFD3D_Elasticity(const Teuchos::ParameterList& plist,
-                   const Teuchos::RCP<const AmanziMesh::Mesh>& mesh)
-    : MFD3D(mesh),
-      InnerProduct(mesh) {};
+                   const Teuchos::RCP<const AmanziMesh::Mesh>& mesh);
   ~MFD3D_Elasticity() {};
 
   // required methods
   // -- schema
   virtual std::vector<SchemaItem> schema() const override {
-    return std::vector<SchemaItem>(1, std::make_tuple(AmanziMesh::NODE, DOF_Type::SCALAR, d_));
+    if (name_id_ == ELASTICITY_DEFAULT) 
+      return std::vector<SchemaItem>(1, std::make_tuple(AmanziMesh::NODE, DOF_Type::SCALAR, d_));
+    return std::vector<SchemaItem>(1, std::make_tuple(AmanziMesh::CELL, DOF_Type::SCALAR, d_));
   }
 
   // -- mass matrices
@@ -60,15 +57,19 @@ class MFD3D_Elasticity : public MFD3D {
   virtual int H1consistency(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Mc) override;
   virtual int StiffnessMatrix(int c, const Tensor& T, DenseMatrix& A) override;
 
+  // special methods
+  int StiffnessMatrix_LocalStress(int c, const std::vector<Tensor>& T, DenseMatrix& A);
+
   // optimization methods (mainly for research, since the maximum principle does not exists)
   int StiffnessMatrixOptimized(int c, const Tensor& T, DenseMatrix& A);
   int StiffnessMatrixMMatrix(int c, const Tensor& T, DenseMatrix& A);
 
  private:
-  void MatrixMatrixProduct_(
-      const DenseMatrix& A, const DenseMatrix& B, bool transposeB, DenseMatrix& AB);
+  int MassMatrix_StressStress_(int v, const std::vector<Tensor>& T, DenseMatrix& M);
 
  private:
+  int name_id_;
+
   static RegisteredFactory<MFD3D_Elasticity> factory_;
 };
 

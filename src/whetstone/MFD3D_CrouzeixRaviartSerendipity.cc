@@ -116,6 +116,7 @@ int MFD3D_CrouzeixRaviartSerendipity::H1consistency(
   DenseMatrix Rf(R_);
   N = Nf.SubMatrix(0, ndof_S, 0, nd);
   R_ = Rf.SubMatrix(0, ndof_S, 0, nd);
+std::cout << N << std::endl;
 
   // -- add correcton Ns (Ns^T Ns)^{-1} M L to matrix R_
   DenseMatrix NN(nd, nd), NM(nd, nd);
@@ -130,6 +131,7 @@ int MFD3D_CrouzeixRaviartSerendipity::H1consistency(
   Nf.Multiply(N, NN, false);
 
   R_ -= Nf;
+std::cout << R_ << std::endl;
 
   // calculate Ac = R inv(G) R^T
   Ac.Reshape(ndof_S, ndof_S);

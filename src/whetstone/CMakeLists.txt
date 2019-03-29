@@ -42,8 +42,10 @@ add_amanzi_library(whetstone
                           MFD3D.cc
                           MFD3D_BernardiRaugel.cc
 			  MFD3D_CrouzeixRaviart.cc MFD3D_CrouzeixRaviartSerendipity.cc
+			  MFD3D_CrouzeixRaviart_HO.cc
                           MFD3D_Diffusion.cc MFD3D_Diffusion_Surface.cc MFD3D_Diffusion_Other.cc 
                           MFD3D_Elasticity.cc 
+                          MFD3D_Elasticity_LocalStress.cc 
                           MFD3D_Electromagnetics.cc MFD3D_Electromagnetics_Surface.cc
                           MFD3D_Generalized_Diffusion.cc
                           MFD3D_Lagrange.cc MFD3D_LagrangeSerendipity.cc
@@ -71,6 +73,7 @@ add_amanzi_library(whetstone
                            MFD3D.hh
                            MFD3D_BernardiRaugel.hh
 			   MFD3D_CrouzeixRaviart.hh MFD3D_CrouzeixRaviartSerendipity.hh
+			   MFD3D_CrouzeixRaviart_HO.hh
                            MFD3D_Diffusion.hh
                            MFD3D_Elasticity.hh
                            MFD3D_Electromagnetics.hh
@@ -149,9 +152,9 @@ if (BUILD_TESTS)
                     SOURCE test/Main.cc test/whetstone_polynomials.cc
                                         test/whetstone_dg.cc
                                         test/whetstone_numi.cc
-                                        test/whetstone_high_order.cc
                                         test/whetstone_maps.cc
                                         test/whetstone_projectors.cc
+                                        test/whetstone_high_order.cc
                     LINK_LIBS ${amanzi_libs} ${UnitTest_LIBRARIES})
 
     # Test: matrices for Derham complex

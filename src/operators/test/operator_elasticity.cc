@@ -37,7 +37,7 @@
 /* *****************************************************************
 * Elasticity model: exactness test.
 ***************************************************************** */
-TEST(OPERATOR_ELASTICITY_EXACTNESS) {
+void RunTest(const std::string& operator_name, bool bc_on_faces) {
   using namespace Amanzi;
   using namespace Amanzi::AmanziMesh;
   using namespace Amanzi::AmanziGeometry;
@@ -52,8 +52,6 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
   std::string xmlFileName = "test/operator_elasticity.xml";
   Teuchos::ParameterXMLFileReader xmlreader(xmlFileName);
   Teuchos::ParameterList plist = xmlreader.getParameters();
-  Teuchos::ParameterList op_list = plist.sublist("PK operator")
-                                        .sublist("elasticity operator");
 
   // create the MSTK mesh framework 
   // -- geometric model is not created. Instead, we specify boundary conditions
@@ -61,6 +59,7 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
   MeshFactory meshfactory(comm);
   meshfactory.set_preference(Preference({Framework::MSTK, Framework::STK}));
   Teuchos::RCP<const Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 4, 5);
+  Teuchos::ParameterList op_list = plist.sublist("PK operator").sublist(operator_name);
 
   // -- general information about mesh
   int ncells = mesh->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::OWNED);
@@ -114,12 +113,10 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
     }
   }
 
-  // create a PDE: operator and boundary conditions
-  // -- XML list speficies discretization method and location of degrees of freedom
-  // -- (called schema). This seems redundant but only when use a low-order method.
+  // create and initialize a PDE 
   Teuchos::RCP<PDE_Elasticity> op = Teuchos::rcp(new PDE_Elasticity(op_list, mesh));
-  op->SetBCs(bcf, bcf);
-  op->AddBCs(bcv, bcv);
+  op->SetBCs(bcv, bcv);
+  if (bc_on_faces) op->AddBCs(bcf, bcf);
   const CompositeVectorSpace& cvs = op->global_operator()->DomainMap();
 
   // create and initialize solution
@@ -128,12 +125,14 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
 
   // create source 
   CompositeVector source(cvs);
-  Epetra_MultiVector& src = *source.ViewComponent("node");
+  if (cvs.HasComponent("node")) {
+    Epetra_MultiVector& src = *source.ViewComponent("node");
 
-  for (int v = 0; v < nnodes; v++) {
-    mesh->node_get_coordinates(v, &xv);
-    Point tmp(ana.source_exact(xv, 0.0));
-    for (int k = 0; k < 2; ++k) src[k][v] = tmp[k];
+    for (int v = 0; v < nnodes; v++) {
+      mesh->node_get_coordinates(v, &xv);
+      Point tmp(ana.source_exact(xv, 0.0));
+      for (int k = 0; k < 2; ++k) src[k][v] = tmp[k];
+    }
   }
 
   // populate the elasticity operator
@@ -167,7 +166,7 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
   CompositeVector& rhs = *global_op->rhs();
   int ierr = pcg.ApplyInverse(rhs, solution);
 
-  ver.CheckResidual(solution, 1.0e-14);
+  ver.CheckResidual(solution, 1.0e-12);
 
   if (MyPID == 0) {
     std::cout << "elasticity solver (pcg): ||r||=" << pcg.residual() 
@@ -176,17 +175,24 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
   }
 
   // compute velocity error
-  double unorm, ul2_err, uinf_err;
-  ana.ComputeNodeError(solution, 0.0, unorm, ul2_err, uinf_err);
+  if (cvs.HasComponent("node")) {
+    double unorm, ul2_err, uinf_err;
+    ana.ComputeNodeError(solution, 0.0, unorm, ul2_err, uinf_err);
 
-  if (MyPID == 0) {
-    ul2_err /= unorm;
-    printf("L2(u)=%12.8g  Inf(u)=%12.8g  itr=%3d\n",
-        ul2_err, uinf_err, pcg.num_itrs());
+    if (MyPID == 0) {
+      ul2_err /= unorm;
+      printf("L2(u)=%12.8g  Inf(u)=%12.8g  itr=%3d\n",
+          ul2_err, uinf_err, pcg.num_itrs());
 
-    CHECK(ul2_err < 0.1);
-    CHECK(pcg.num_itrs() < 15);
+      CHECK(ul2_err < 0.1);
+      CHECK(pcg.num_itrs() < 15);
+    }
   }
 }
 
 
+TEST(OPERATOR_ELASTICITY_EXACTNESS) {
+  RunTest("elasticity operator 1", true);
+  RunTest("elasticity operator 2", false);
+  RunTest("elasticity operator local stress", false);
+}

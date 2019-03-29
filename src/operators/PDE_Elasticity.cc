@@ -18,12 +18,14 @@
 #include "BilinearFormFactory.hh"
 #include "errors.hh"
 #include "MatrixFE.hh"
+#include "MFD3D_Elasticity.hh"
 #include "PreconditionerFactory.hh"
 #include "WhetStoneDefs.hh"
 
 // Amanzi::Operators
 #include "Op.hh"
 #include "Op_Cell_Schema.hh"
+#include "Op_Node_Schema.hh"
 #include "OperatorDefs.hh"
 #include "Operator_Schema.hh"
 #include "PDE_Elasticity.hh"
@@ -54,15 +56,33 @@ void PDE_Elasticity::SetTensorCoefficient(double K) {
 void PDE_Elasticity::UpdateMatrices(const Teuchos::Ptr<const CompositeVector>& u,
                                     const Teuchos::Ptr<const CompositeVector>& p)
 {
-  WhetStone::DenseMatrix Acell;
-
+  WhetStone::DenseMatrix A;
   WhetStone::Tensor Kc(mesh_->space_dimension(), 1);
   Kc(0, 0) = K_default_;
   
-  for (int c = 0; c < ncells_owned; c++) {
-    if (K_.get()) Kc = (*K_)[c];
-    mfd_->StiffnessMatrix(c, Kc, Acell);
-    local_op_->matrices[c] = Acell;
+  // use factory for cell-based method
+  if (base_ == AmanziMesh::CELL) {
+    for (int c = 0; c < ncells_owned; ++c) {
+      if (K_.get()) Kc = (*K_)[c];
+      mfd_->StiffnessMatrix(c, Kc, A);
+      local_op_->matrices[c] = A;
+    }
+  // special elasticity methods: there exists only one such method so far
+  } else if (base_ == AmanziMesh::NODE) {
+    AmanziMesh::Entity_ID_List cells;
+    auto mfd_elasticity = Teuchos::rcp_dynamic_cast<WhetStone::MFD3D_Elasticity>(mfd_);
+
+    for (int n = 0; n < nnodes_owned; ++n) {
+      mesh_->node_get_cells(n, AmanziMesh::Parallel_type::ALL, &cells);
+
+      std::vector<WhetStone::Tensor> vKc;
+      for (int i = 0; i < cells.size(); ++i) {
+        if (K_.get()) Kc = (*K_)[cells[i]];
+        vKc.push_back(Kc);
+      }
+      mfd_elasticity->StiffnessMatrix_LocalStress(n, vKc, A);
+      local_op_->matrices[n] = A;
+    }
   }
 }
 
@@ -74,12 +94,11 @@ void PDE_Elasticity::Init_(Teuchos::ParameterList& plist)
 {
   // generate schema for the mimetic discretization method
   Teuchos::ParameterList& schema_list = plist.sublist("schema");
+  mfd_ = WhetStone::BilinearFormFactory::Create(schema_list, mesh_);
 
   Schema my_schema;
-  auto base = my_schema.StringToKind(schema_list.get<std::string>("base"));
-
-  mfd_ = WhetStone::BilinearFormFactory::Create(schema_list, mesh_);
-  my_schema.Init(mfd_, mesh_, base);
+  base_ = my_schema.StringToKind(schema_list.get<std::string>("base"));
+  my_schema.Init(mfd_, mesh_, base_);
 
   // create or check the existing Operator
   local_schema_col_ = my_schema;
@@ -111,7 +130,12 @@ void PDE_Elasticity::Init_(Teuchos::ParameterList& plist)
   }
 
   // create the local Op and register it with the global Operator
-  local_op_ = Teuchos::rcp(new Op_Cell_Schema(my_schema, my_schema, mesh_));
+  if (base_ == AmanziMesh::CELL) {
+    local_op_ = Teuchos::rcp(new Op_Cell_Schema(my_schema, my_schema, mesh_));
+  } else if (base_ == AmanziMesh::NODE) {
+    local_op_ = Teuchos::rcp(new Op_Node_Schema(my_schema, my_schema, mesh_));
+  }
+
   global_op_->OpPushBack(local_op_);
   
   K_ = Teuchos::null;
