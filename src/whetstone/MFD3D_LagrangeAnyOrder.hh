@@ -9,12 +9,14 @@
 
   Author: Konstantin Lipnikov (lipnikov@lanl.gov)
 
-  Crouzeix-Raviart element: degrees of freedom are moments on faces
-  and inside cell.
+  Lagrange-type element: degrees of freedom are nodal values and
+  moments on edges, faces and inside cell.
 */
 
-#ifndef AMANZI_MFD3D_CROUZEIX_RAVIART_ANY_ORDER_HH_
-#define AMANZI_MFD3D_CROUZEIX_RAVIART_ANY_ORDER_HH_
+#ifndef AMANZI_MFD3D_LAGRANGE_ANY_ORDER_HH_
+#define AMANZI_MFD3D_LAGRANGE_ANY_ORDER_HH_
+
+#include <vector>
 
 #include "Teuchos_RCP.hpp"
 
@@ -23,7 +25,6 @@
 
 #include "BilinearFormFactory.hh"
 #include "DenseMatrix.hh"
-#include "MatrixPolynomial.hh"
 #include "MFD3D.hh"
 #include "Polynomial.hh"
 #include "PolynomialOnMesh.hh"
@@ -32,11 +33,11 @@
 namespace Amanzi {
 namespace WhetStone {
 
-class MFD3D_CrouzeixRaviartAnyOrder : public MFD3D { 
+class MFD3D_LagrangeAnyOrder : public MFD3D { 
  public:
-  MFD3D_CrouzeixRaviartAnyOrder(const Teuchos::ParameterList& plist,
-                                const Teuchos::RCP<const AmanziMesh::Mesh>& mesh);
-  ~MFD3D_CrouzeixRaviartAnyOrder() {};
+  MFD3D_LagrangeAnyOrder(const Teuchos::ParameterList& plist,
+                         const Teuchos::RCP<const AmanziMesh::Mesh>& mesh);
+  ~MFD3D_LagrangeAnyOrder() {};
 
   // required methods
   // -- schema
@@ -44,21 +45,24 @@ class MFD3D_CrouzeixRaviartAnyOrder : public MFD3D {
 
   // -- mass matrices
   virtual int L2consistency(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Mc, bool symmetry) override {
-    Errors::Message msg("L2 consistency is not implemented for Crouzeix-Raviart space.");
+    Errors::Message msg("L2 consistency is not implemented for Lagrange_AnyOrder element.");
     Exceptions::amanzi_throw(msg);
-    return WHETSTONE_ELEMENTAL_MATRIX_OK;
+    return 0;
   }
   virtual int MassMatrix(int c, const Tensor& T, DenseMatrix& M) override {
-    Errors::Message msg("MassMatrix is not supported for Crouzeix-Raviart space.");
+    Errors::Message msg("Mass matrix is not implemented for Lagrange_AnyOrder element.");
     Exceptions::amanzi_throw(msg);
-    return WHETSTONE_ELEMENTAL_MATRIX_OK;
+    return 0;
   }
 
   // -- stiffness matrix
-  virtual int H1consistency(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Ac) override;
+  virtual int H1consistency(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Ac) override {
+    if (d_ == 2) return H1consistency2D_(c, T, N, Ac);
+    return H1consistency3D_(c, T, N, Ac);
+  }
   virtual int StiffnessMatrix(int c, const Tensor& T, DenseMatrix& A) override;
 
-  // -- projectors: base L2 and H1 projectors
+  // -- projectors
   virtual void L2Cell(int c, const std::vector<Polynomial>& vf,
                       const Polynomial* moments, Polynomial& uc) override {
     ProjectorCell_(c, vf, ProjectorType::L2, moments, uc);
@@ -69,38 +73,42 @@ class MFD3D_CrouzeixRaviartAnyOrder : public MFD3D {
     ProjectorCell_(c, vf, ProjectorType::H1, moments, uc);
   }
 
-  // additional miscaleneous projectors
-  void L2GradientCell(int c, const std::vector<VectorPolynomial>& vf,
-                      const std::shared_ptr<DenseVector>& moments, MatrixPolynomial& uc) {
-    ProjectorGradientCell_(c, vf, ProjectorType::L2, moments, uc);
+  virtual void H1Cell(int c, const DenseVector& dofs, Polynomial& uc) override {
+    ProjectorCellFromDOFs_(c, dofs, ProjectorType::H1, uc);
   }
 
-  // access / setup
+  // surface methods
+  int H1consistencySurface(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Ac);
+  int StiffnessMatrixSurface(int c, const Tensor& T, DenseMatrix& A);
+
+  // access 
   // -- integrals of monomials in high-order schemes could be reused
   const PolynomialOnMesh& integrals() const { return integrals_; }
+  PolynomialOnMesh& integrals() { return integrals_; }
+
+  // -- matrices that could be resused in other code
   const DenseMatrix& G() const { return G_; }
   const DenseMatrix& R() const { return R_; }
 
  private:
-  // generic code for multiple projectors
+  int H1consistency2D_(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Ac);
+  int H1consistency3D_(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Ac);
+
   void ProjectorCell_(int c, const std::vector<Polynomial>& vf,
-                      const ProjectorType type, 
+                      const ProjectorType type,
                       const Polynomial* moments, Polynomial& uc);
 
-  void ProjectorGradientCell_(int c, const std::vector<VectorPolynomial>& vf,
-                              const ProjectorType type, 
-                              const std::shared_ptr<DenseVector>& moments, MatrixPolynomial& uc);
+  void ProjectorCellFromDOFs_(int c, const DenseVector& dofs,
+                              const ProjectorType type, Polynomial& uc);
 
-  // supporting routines
-  void CalculateFaceDOFs_(int f, const Polynomial& vf, const Polynomial& pf,
-                          DenseVector& vdof, int& row);
+  std::vector<Polynomial> ConvertMomentsToPolynomials_(int order);
 
  protected:
   PolynomialOnMesh integrals_;
   DenseMatrix R_, G_;
 
  private:
-  static RegisteredFactory<MFD3D_CrouzeixRaviartAnyOrder> factory_;
+  static RegisteredFactory<MFD3D_LagrangeAnyOrder> factory_;
 };
 
 }  // namespace WhetStone
