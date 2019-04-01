@@ -73,10 +73,8 @@ int MFD3D_CrouzeixRaviartSerendipity::H1consistency(
   int ndof_S = nfaces * ndf + ndc;
 
   // calculate full matrices
-  set_use_always_ho(true);
-
   DenseMatrix Nf, Af;
-  MFD3D_CrouzeixRaviart::H1consistency(c, K, Nf, Af);
+  MFD3D_CrouzeixRaviartAnyOrder::H1consistency(c, K, Nf, Af);
 
   // pre-calculate integrals of monomials 
   NumericalIntegration numi(mesh_);
@@ -116,7 +114,6 @@ int MFD3D_CrouzeixRaviartSerendipity::H1consistency(
   DenseMatrix Rf(R_);
   N = Nf.SubMatrix(0, ndof_S, 0, nd);
   R_ = Rf.SubMatrix(0, ndof_S, 0, nd);
-std::cout << N << std::endl;
 
   // -- add correcton Ns (Ns^T Ns)^{-1} M L to matrix R_
   DenseMatrix NN(nd, nd), NM(nd, nd);
@@ -131,7 +128,6 @@ std::cout << N << std::endl;
   Nf.Multiply(N, NN, false);
 
   R_ -= Nf;
-std::cout << R_ << std::endl;
 
   // calculate Ac = R inv(G) R^T
   Ac.Reshape(ndof_S, ndof_S);
@@ -178,13 +174,11 @@ void MFD3D_CrouzeixRaviartSerendipity::ProjectorCell_(
   basis.Init(mesh_, AmanziMesh::CELL, c, order_, ptmp);
 
   // calculate full matrices
-  set_use_always_ho(true);
-
   Tensor T(d_, 1);
   DenseMatrix N, A;
 
   T(0, 0) = 1.0;
-  MFD3D_CrouzeixRaviart::H1consistency(c, T, N, A);  
+  MFD3D_CrouzeixRaviartAnyOrder::H1consistency(c, T, N, A);  
 
   // select number of non-aligned edges: we assume cell convexity 
   int nfaces = mesh_->cell_get_num_faces(c);
