@@ -1001,7 +1001,7 @@ int PDE_DiffusionNLFVwithBndFaces::NLTPFAContributions_(int f, double& tc1, doub
 {
    int c, c1, c2, c3, f1;
    AmanziMesh::Entity_ID_List cells, cells_tmp, faces;
-   
+
    const std::vector<double>& bc_value = bcs_trial_[0]->bc_value();
    const std::vector<int>& bc_model = bcs_trial_[0]->bc_model();
 
@@ -1051,7 +1051,6 @@ int PDE_DiffusionNLFVwithBndFaces::NLTPFAContributions_(int f, double& tc1, doub
   }
 
   return 0;
-
 }   
 
 }  // namespace Operators
