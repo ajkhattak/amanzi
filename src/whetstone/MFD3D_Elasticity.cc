@@ -33,8 +33,7 @@ namespace WhetStone {
 MFD3D_Elasticity::MFD3D_Elasticity(
     const Teuchos::ParameterList& plist,
     const Teuchos::RCP<const AmanziMesh::Mesh>& mesh) 
-  : MFD3D(mesh),
-    InnerProduct(mesh)
+  : MFD3D(mesh)
 {
   std::string base = plist.get<std::string>("base");
   if (base == "node") 
