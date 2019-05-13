@@ -34,7 +34,7 @@
 #include "NumericalIntegration.hh"
 #include "OperatorUtils.hh"
 #include "Tensor.hh"
-#include "VectorPolynomial.hh"
+#include "VectorObjects.hh"
 #include "WhetStoneDefs.hh"
 
 // Operators

@@ -45,7 +45,7 @@ class MyRemapDG : public RemapDG_Tests<AnalyticDG04> {
   ~MyRemapDG() {};
 
   // access 
-  const std::vector<WhetStone::VectorPolynomial> det() const { return *det_; }
+  const std::vector<WhetStone::Polynomial> det() const { return *det_; }
   const std::shared_ptr<WhetStone::MeshMaps> maps() const { return maps_; }
 };
 
@@ -147,8 +147,8 @@ void RemapTestsDualRK(const Amanzi::Explicit_TI::method_t& rk_method,
   MyRemapDG remap(mesh0, mesh1, plist);
   remap.DeformMesh(deform, 1.0);
   remap.InitializeOperators(dg);
-  remap.InitializeEdgeFaceVelocities();
-  remap.InitializeJacobianMatrix();
+  remap.StaticEdgeFaceVelocities();
+  remap.StaticCellVelocity();
   remap.InitializeConsistentJacobianDeterminant();
 
   // initial mass
@@ -234,7 +234,7 @@ void RemapTestsDualRK(const Amanzi::Explicit_TI::method_t& rk_method,
   double area(0.0), area1(0.0), mass1(0.0), gcl_err(0.0), gcl_inf(0.0);
 
   for (int c = 0; c < ncells_owned; ++c) {
-    double vol1 = numi.IntegratePolynomialCell(c, det[c][0]);
+    double vol1 = numi.IntegratePolynomialCell(c, det[c]);
     double vol2 = mesh1->cell_volume(c);
 
     area += vol1;
@@ -248,33 +248,12 @@ void RemapTestsDualRK(const Amanzi::Explicit_TI::method_t& rk_method,
     for (int i = 0; i < nk; ++i) data(i) = p2c[i][c];
     auto poly = dg->cell_basis(c).CalculatePolynomial(mesh0, c, order, data);
 
-    int quad_order = det[c][0].order() + poly.order();
+    int quad_order = det[c].order() + poly.order();
 
-    if (map_name == "PEM") {
-      AmanziMesh::Entity_ID_List faces, nodes;
-      mesh0->cell_get_faces(c, &faces);
-      int nfaces = faces.size();
-
-      std::vector<AmanziGeometry::Point> xy(3);
-      xy[0] = mesh0->cell_centroid(c);
-
-      for (int n = 0; n < nfaces; ++n) {
-        int f = faces[n];
-        mesh0->face_get_nodes(f, &nodes);
-        mesh0->node_get_coordinates(nodes[0], &(xy[1]));
-        mesh0->node_get_coordinates(nodes[1], &(xy[2]));
-
-        std::vector<const WhetStone::WhetStoneFunction*> polys(2);
-        polys[0] = &det[c][n];
-        polys[1] = &poly;
-        mass1 += numi.IntegrateFunctionsSimplex(xy, polys, quad_order);
-      }
-    } else {
-      WhetStone::Polynomial tmp(det[c][0]);
-      tmp.ChangeOrigin(mesh0->cell_centroid(c));
-      poly *= tmp;
-      mass1 += numi.IntegratePolynomialCell(c, poly);
-    }
+    WhetStone::Polynomial tmp(det[c]);
+    tmp.ChangeOrigin(mesh0->cell_centroid(c));
+    poly *= tmp;
+    mass1 += numi.IntegratePolynomialCell(c, poly);
   }
 
   // parallel collective operations
@@ -303,7 +282,6 @@ void RemapTestsDualRK(const Amanzi::Explicit_TI::method_t& rk_method,
 }
 
 TEST(REMAP_DUAL) {
-  /*
   double dT(0.1);
   auto rk_method = Amanzi::Explicit_TI::heun_euler;
   int deform = 1;
@@ -311,8 +289,8 @@ TEST(REMAP_DUAL) {
 
   RemapTestsDualRK(rk_method, "VEM", "test/median15x16.exo", 0,0,0, dT/2);
   RemapTestsDualRK(rk_method, "VEM", "", 4,4,4, dT, deform);
-  */
 
+  /*
   double dT(0.1);
   auto rk_method = Amanzi::Explicit_TI::tvd_3rd_order;
   std::string maps = "VEM";
@@ -320,6 +298,7 @@ TEST(REMAP_DUAL) {
   RemapTestsDualRK(rk_method, maps, "", 10,10,10, dT/2, deform);
   RemapTestsDualRK(rk_method, maps, "", 20,20,20, dT/4, deform);
   RemapTestsDualRK(rk_method, maps, "", 40,40,40, dT/8, deform);
+  */
 
   /*
   double dT(0.01);
@@ -368,7 +347,7 @@ TEST(REMAP_DUAL) {
   /*
   double dT(0.025);
   auto rk_method = rk_method;
-  std::string maps = "PEM";
+  std::string maps = "VEM";
   RemapTestsDualRK(rk_method, maps, "test/triangular8.exo",  0,0,0, dT);
   RemapTestsDualRK(rk_method, maps, "test/triangular16.exo", 0,0,0, dT/2);
   RemapTestsDualRK(rk_method, maps, "test/triangular32.exo", 0,0,0, dT/4);
