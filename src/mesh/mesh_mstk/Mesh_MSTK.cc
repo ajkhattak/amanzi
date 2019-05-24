@@ -1057,6 +1057,7 @@ Mesh_MSTK::~Mesh_MSTK() {
   if (extface_map_w_ghosts_) delete extface_map_w_ghosts_;
   if (owned_to_extface_importer_) delete owned_to_extface_importer_;
   delete [] faceflip;
+  if (edgeflip) delete [] edgeflip;
 
   if (OwnedVerts) MSet_Delete(OwnedVerts);
   if (NotOwnedVerts) MSet_Delete(NotOwnedVerts);
@@ -3793,6 +3794,7 @@ void Mesh_MSTK::post_create_steps_(const bool request_faces,
 
   init_nodes();
 
+  edgeflip = NULL;
   if (request_edges) init_edges();
   if (request_faces) init_faces();
   init_cells();
