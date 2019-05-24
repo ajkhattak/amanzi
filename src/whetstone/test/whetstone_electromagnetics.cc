@@ -213,10 +213,6 @@ void MassMatrix3D(std::string mesh_file, int max_row) {
   }
 }
 
-TEST(MASS_MATRIX_3D_HEX_RANDOM) {
-  MassMatrix3D("test/hex_random.exo", 12);
-}
-
 TEST(MASS_MATRIX_3D_CUBE) {
   MassMatrix3D("", 12);
 }
@@ -231,6 +227,10 @@ TEST(MASS_MATRIX_3D_24SIDED) {
 
 TEST(MASS_MATRIX_3D_DODECAHEDRON) {
   MassMatrix3D("test/dodecahedron.exo", 10);
+}
+
+TEST(MASS_MATRIX_3D_HEX_RANDOM) {
+  MassMatrix3D("test/hex_random.exo", 12);
 }
 
 
