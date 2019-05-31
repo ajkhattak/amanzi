@@ -45,31 +45,41 @@ class MFD3D_GeneralizedElectromagnetics : public MFD3D {
   virtual int MassMatrix(int c, const Tensor& T, DenseMatrix& M) override; 
 
   // -- stiffness matrices
-  virtual int H1consistency(int c, const Tensor& K, DenseMatrix& N, DenseMatrix& Ac) override {
-    Errors::Message msg("H1 consistency is not implemented for generalized electromagnetics scheme.");
-    Exceptions::amanzi_throw(msg);
-    return 0;
-  }
+  virtual int H1consistency(int c, const Tensor& T, DenseMatrix& N, DenseMatrix& Ac) override;
   virtual int StiffnessMatrix(int c, const Tensor& K, DenseMatrix& A) override;
 
  private:
   void CurvedFaceGeometry_(
-      const Entity_ID_List& nodes, AmanziGeometry::Point& xf,
-      DenseVector& dint, DenseVector& dext,
+      const Entity_ID_List& nodes, int fdir,
+      AmanziGeometry::Point& xf, DenseVector& dint, DenseVector& dext, 
       std::vector<AmanziGeometry::Point>& tri_normal,
       std::vector<AmanziGeometry::Point>& tri_center,
       std::vector<double>& tri_area);
 
-  void CurvedFaceRaviartThomas_(
-      const AmanziGeometry::Point& xf, const Entity_ID_List& nodes,
-      const std::vector<int>& dirs, const std::vector<double>& tri_area,
-      const DenseVector& dint, const DenseVector& dext,
-      std::vector<std::vector<AmanziGeometry::Point> >& rt_tri);
+  void CurvedFaceBasisFunctions_(
+      const Entity_ID_List& nodes, const std::vector<int>& dirs,
+      const AmanziGeometry::Point& xf, const DenseVector& dint, const DenseVector& dext, 
+      const std::vector<AmanziGeometry::Point>& tri_normal,
+      const std::vector<double>& tri_area,
+      std::vector<std::vector<AmanziGeometry::Point> >& rt_tri,
+      std::vector<std::vector<AmanziGeometry::Point> >& nd_tri);
 
   DenseMatrix CurvedFaceLifting_(
       const AmanziGeometry::Point& xf, const Entity_ID_List& nodes,
       const std::vector<int>& dirs, const std::vector<double>& tri_area,
       const DenseVector& dint, const DenseVector& dext);
+
+  DenseMatrix CurvedFaceLiftingConstant_(
+      const AmanziGeometry::Point& xf, const Entity_ID_List& nodes, const std::vector<int>& dirs,
+      const DenseVector& dint, const DenseVector& dext);
+
+  DenseMatrix CurvedFaceLiftingLinear_(
+      const AmanziGeometry::Point& xf, const Entity_ID_List& nodes,
+      const std::vector<int>& dirs,
+      const DenseVector& dint, const DenseVector& dext,
+      const std::vector<AmanziGeometry::Point>& tri_normal,
+      const std::vector<AmanziGeometry::Point>& tri_center,
+      const std::vector<double>& tri_area);
 
  private:
   static RegisteredFactory<MFD3D_GeneralizedElectromagnetics> factory_;

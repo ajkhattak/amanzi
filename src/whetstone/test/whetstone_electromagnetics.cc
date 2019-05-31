@@ -144,7 +144,6 @@ void MassMatrix3D(std::string mesh_file, int max_row) {
  
   Teuchos::ParameterList plist;
   MFD3D_Electromagnetics mfd(plist, mesh);
-  MFD3D_GeneralizedElectromagnetics mfd_gen(plist, mesh);
 
   int cell = 0;
   AmanziMesh::Entity_ID_List edges;
@@ -160,8 +159,7 @@ void MassMatrix3D(std::string mesh_file, int max_row) {
   T(1, 0) = 1.0;
   T(2, 2) = 1.0;
 
-  int i0 = (mesh_file == "test/hex_random.exo") ? 4 : 0;
-  for (int method = i0; method < 5; method++) {
+  for (int method = 0; method < 4; method++) {
     DenseMatrix M(nrows, nrows);
 
     if (method == 0) {
@@ -174,8 +172,6 @@ void MassMatrix3D(std::string mesh_file, int max_row) {
     } else if (method == 3) {
       mfd.MassMatrixInverseOptimized(cell, T, M);
       M.Inverse();
-    } else if (method == 4) {
-      mfd_gen.MassMatrix(cell, T, M);
     }
 
     int m = std::min(nrows, max_row);
@@ -227,10 +223,6 @@ TEST(MASS_MATRIX_3D_24SIDED) {
 
 TEST(MASS_MATRIX_3D_DODECAHEDRON) {
   MassMatrix3D("test/dodecahedron.exo", 10);
-}
-
-TEST(MASS_MATRIX_3D_HEX_RANDOM) {
-  MassMatrix3D("test/hex_random.exo", 12);
 }
 
 
@@ -340,10 +332,11 @@ void StiffnessMatrix3D(std::string mesh_file, int max_row) {
   MeshFactory meshfactory(comm);
   meshfactory.set_preference(Preference({Framework::MSTK}));
 
-  bool request_faces(true), request_edges(true);
-
-  // RCP<Mesh> mesh = meshfactory.create(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1, 1, 1, true, true); 
-  RCP<Mesh> mesh = meshfactory.create(mesh_file, request_faces, request_edges); 
+  RCP<Mesh> mesh;
+  if (mesh_file == "")
+    mesh = meshfactory.create(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1, 1, 1, true, true); 
+  else 
+    mesh = meshfactory.create(mesh_file, true, true); 
  
   Teuchos::ParameterList plist;
   MFD3D_Electromagnetics mfd(plist, mesh);
@@ -387,6 +380,7 @@ void StiffnessMatrix3D(std::string mesh_file, int max_row) {
     double xi, xj, yj;
     double vxx(0.0), vxy(0.0), volume = mesh->cell_volume(cell); 
     AmanziGeometry::Point v1(3);
+    const AmanziGeometry::Point& xc = mesh->cell_centroid(cell); 
 
     for (int i = 0; i < nedges; i++) {
       int e1 = edges[i];
@@ -394,7 +388,7 @@ void StiffnessMatrix3D(std::string mesh_file, int max_row) {
       const AmanziGeometry::Point& t1 = mesh->edge_vector(e1);
       double a1 = mesh->edge_length(e1);
 
-      v1 = xe^t1;
+      v1 = xe ^ t1;
       xi = v1[0] / a1;
 
       for (int j = 0; j < nedges; j++) {
@@ -403,7 +397,7 @@ void StiffnessMatrix3D(std::string mesh_file, int max_row) {
         const AmanziGeometry::Point& t2 = mesh->edge_vector(e2);
         double a2 = mesh->edge_length(e2);
 
-        v1 = ye^t2;
+        v1 = ye ^ t2;
         xj = v1[0] / a2;
         yj = v1[1] / a2;
 
@@ -415,6 +409,10 @@ void StiffnessMatrix3D(std::string mesh_file, int max_row) {
     CHECK_CLOSE(4 * volume * T(0,0), vxx, tol);
     CHECK_CLOSE(4 * volume * T(0,1), vxy, tol);
   }
+}
+
+TEST(STIFFNESS_MATRIX_3D_CUBE) {
+  StiffnessMatrix3D("", 12);
 }
 
 TEST(STIFFNESS_MATRIX_3D_HEX) {
@@ -429,4 +427,72 @@ TEST(STIFFNESS_MATRIX_3D_24SIDES) {
   StiffnessMatrix3D("test/cube_triangulated.exo", 10);
 } 
 
+
+/* ******************************************************************
+* Mass matrix for curved elements
+****************************************************************** */
+TEST(MASS_MATRIX_3D_RANDOM) {
+  using namespace Teuchos;
+  using namespace Amanzi;
+  using namespace Amanzi::AmanziGeometry;
+  using namespace Amanzi::AmanziMesh;
+  using namespace Amanzi::WhetStone;
+
+  std::cout << "\nTest: Mass matrix for curved elements in 3D: " << std::endl;
+  auto comm = Amanzi::getDefaultComm();
+
+  MeshFactory meshfactory(comm);
+  meshfactory.set_preference(Preference({Framework::MSTK}));
+
+  RCP<Mesh> mesh = meshfactory.create("test/hex_random.exo", true, true); 
+ 
+  Teuchos::ParameterList plist;
+  MFD3D_GeneralizedElectromagnetics mfd(plist, mesh);
+
+  int cell = 0;
+  AmanziMesh::Entity_ID_List edges;
+  mesh->cell_get_edges(cell, &edges);
+
+  Tensor T(3, 1);
+  T(0, 0) = 1.0;
+
+  DenseMatrix M;
+  mfd.MassMatrix(cell, T, M);
+
+  int nrows = M.NumRows();
+  int m = std::min(nrows, 12);
+  printf("Mass matrix: size=%d  submatrix=%dx%d\n", nrows, m, m);
+
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < m; j++ ) printf("%8.4f ", M(i, j)); 
+    printf("\n");
+  }
+
+  // verify SPD propery
+  for (int i = 0; i < nrows; i++) CHECK(M(i, i) > 0.0);
+
+  // verify exact integration property
+  double xi, yi, xj;
+  double vxx = 0.0, vxy = 0.0, volume = mesh->cell_volume(cell); 
+  /*
+  for (int i = 0; i < nedges; i++) {
+    int e1 = edges[i];
+    const AmanziGeometry::Point& t1 = mesh->edge_vector(e1);
+    double a1 = mesh->edge_length(e1);
+
+    xi = t1[0] / a1;
+    yi = t1[1] / a1;
+    for (int j = 0; j < nedges; j++) {
+      int e2 = edges[j];
+      const AmanziGeometry::Point& t2 = mesh->edge_vector(e2);
+      double a2 = mesh->edge_length(e2);
+      xj = t2[0] / a2;
+      vxx += M(i, j) * xi * xj;
+      vxy += M(i, j) * yi * xj;
+    }
+  }
+  CHECK_CLOSE(volume, vxx, 1e-10);
+  CHECK_CLOSE(-volume, vxy, 1e-10);
+  */
+}
 
