@@ -515,7 +515,7 @@ void AdvectionFn<AnalyticDG>::ApproximateVelocity_LevelSet(
   for (int f = 0; f < nfaces_wghost; ++f) {
     dt_stable = std::min(dt_stable, mesh_->face_area(f));
   }
-  if (level_set_velf_) dt_stable_min = std::min(dt_stable_min, dt_stable);
+  if (level_set_velf_) dt_stable_min = std::min(dt_stable_min, dt_stable / (2 * order_ + 1));
 }
 
 
@@ -761,7 +761,7 @@ void AdvectionTransient(std::string filename, int nx, int ny, int nz,
     printf("nx=%3d CELL: (mean) L2(p)=%9.6g  Inf(p)=%9.6g\n", nx, pl2_mean, pinf_mean);
     printf("            (total) L2(p)=%9.6g  Inf(p)=%9.6g\n", pl2_err, pinf_err);
     printf("         (integral) L2(p)=%9.6g\n", pl2_int);
-    printf("       FACE:        Inf(p)=%9.6g  Ind(grad p)=%9.6g\n", pface_inf, grad_pface_inf);
+    printf("       FACE:        Inf(p)=%9.6g  Inf(grad p)=%9.6g\n", pface_inf, grad_pface_inf);
     if (exact_solution_expected) 
       CHECK(pl2_mean < 1e-10);
     else if (limiter == "none") 
@@ -811,11 +811,13 @@ TEST(OPERATOR_ADVECTION_TRANSIENT_DG) {
   AdvectionTransient<AnalyticDG06>("test/triangular128.exo",128,0,0, dT/16,T1);
   */
 
+  /*
   double dT(0.002), T1(1.0);
   AdvectionTransient<AnalyticDG06>("test/median15x16.exo",   16,0,0, dT,  T1);
   AdvectionTransient<AnalyticDG06>("test/median32x33.exo",   32,0,0, dT/2,T1);
   AdvectionTransient<AnalyticDG06>("test/median63x64.exo",   64,0,0, dT/4,T1);
   AdvectionTransient<AnalyticDG06>("test/median127x128.exo",128,0,0, dT/8,T1);
+  */
 
   /*
   double dT(0.01), T1(1.0);
@@ -833,13 +835,11 @@ TEST(OPERATOR_ADVECTION_TRANSIENT_DG) {
   AdvectionTransient<AnalyticDG07>("square",128,128, 0, dT/8,T1, 0, false, "primal", "level set");
   */
 
-  /*
   double dT(0.001), T1(1.0);
   AdvectionTransient<AnalyticDG07>("test/median15x16.exo",   16,0,0, dT,  T1, 0, false, "primal", "level set");
   AdvectionTransient<AnalyticDG07>("test/median32x33.exo",   32,0,0, dT/2,T1, 0, false, "primal", "level set");
   AdvectionTransient<AnalyticDG07>("test/median63x64.exo",   64,0,0, dT/4,T1, 0, false, "primal", "level set");
   AdvectionTransient<AnalyticDG07>("test/median127x128.exo",128,0,0, dT/8,T1, 0, false, "primal", "level set");
-  */
 
   /*
   double dT(0.001), T1(0.8);
