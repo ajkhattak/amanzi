@@ -773,7 +773,6 @@ void AdvectionTransient(std::string filename, int nx, int ny, int nz,
 
 
 TEST(OPERATOR_ADVECTION_TRANSIENT_DG) {
-  /*
   double dT(0.1), T1(1.0);
   exact_solution_expected = true;
   AdvectionTransient<AnalyticDG02b>("square", 4,4,0, dT,T1, 0, false);
@@ -785,7 +784,6 @@ TEST(OPERATOR_ADVECTION_TRANSIENT_DG) {
   AdvectionTransient<AnalyticDG06>("square",  4,4,0, dT,T1, 0, false, "dual", "high order");
   AdvectionTransient<AnalyticDG06>("square",  4,4,0, dT,T1, 0, false, "gauss points", "high order", "Barth-Jespersen dg");
   AdvectionTransient<AnalyticDG06c>("cube",   2,2,1, dT,T1, 0);
-  */
 
   /*
   int deform(0);
@@ -835,11 +833,13 @@ TEST(OPERATOR_ADVECTION_TRANSIENT_DG) {
   AdvectionTransient<AnalyticDG07>("square",128,128, 0, dT/8,T1, 0, false, "primal", "level set");
   */
 
+  /*
   double dT(0.001), T1(1.0);
   AdvectionTransient<AnalyticDG07>("test/median15x16.exo",   16,0,0, dT,  T1, 0, false, "primal", "level set");
   AdvectionTransient<AnalyticDG07>("test/median32x33.exo",   32,0,0, dT/2,T1, 0, false, "primal", "level set");
   AdvectionTransient<AnalyticDG07>("test/median63x64.exo",   64,0,0, dT/4,T1, 0, false, "primal", "level set");
   AdvectionTransient<AnalyticDG07>("test/median127x128.exo",128,0,0, dT/8,T1, 0, false, "primal", "level set");
+  */
 
   /*
   double dT(0.001), T1(0.8);

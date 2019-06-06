@@ -116,7 +116,6 @@ int MFD3D_LagrangeAnyOrder::H1consistency3D_(
   int rowf = nnodes;  // pointer to groups
   int rowe = rowf + nfaces * ndf;
   int rowc = rowe + nedges * nde;
-std::cout << "PNT:" << rowf << " " << rowe << " " << rowc << std::endl;
 
   // pre-calculate data for each face
   std::vector<DenseMatrix> vRf;
