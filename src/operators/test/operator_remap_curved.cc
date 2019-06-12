@@ -481,6 +481,7 @@ void RemapTestsCurved(const Amanzi::Explicit_TI::method_t& rk_method,
 }
 
 TEST(REMAP_CURVED_2D) {
+  /*
   int nloop = 2;
   double dT(0.1), T1(1.0 / nloop);
   auto rk_method = Amanzi::Explicit_TI::heun_euler;
@@ -488,6 +489,7 @@ TEST(REMAP_CURVED_2D) {
   int deform = 1;
   RemapTestsCurved(rk_method, maps, "", 8,8,0, dT, deform, nloop, T1);
   // RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, 0.1, 6, 40, 0.025);
+  */
 
   /*
   int nloop = 40;
@@ -501,8 +503,7 @@ TEST(REMAP_CURVED_2D) {
   RemapTestsCurved(rk_method, maps, "test/circle_poly80.exo", 80,0,0, dT/8, deform, nloop, T1);
   */
 
-  /*
-  int nloop = 5;
+  int nloop = 1;
   double dT(0.02 * nloop), T1(1.0 / nloop);
   auto rk_method = Amanzi::Explicit_TI::tvd_3rd_order;
   std::string maps = "VEM";
@@ -511,7 +512,6 @@ TEST(REMAP_CURVED_2D) {
   RemapTestsCurved(rk_method, maps, "",  32, 32,0, dT/2, deform, nloop, T1);
   RemapTestsCurved(rk_method, maps, "",  64, 64,0, dT/4, deform, nloop, T1);
   RemapTestsCurved(rk_method, maps, "", 128,128,0, dT/8, deform, nloop, T1);
-  */
 
   /*
   int nloop = 1;
