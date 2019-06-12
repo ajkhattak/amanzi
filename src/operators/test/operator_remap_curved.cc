@@ -34,16 +34,16 @@
 #include "MeshDeformation.hh"
 #include "RemapDG_Tests.hh"
 
-#include "AnalyticDG04.hh"
+#include "AnalyticDG08b.hh"
 
 namespace Amanzi {
 
-class MyRemapDG : public RemapDG_Tests<AnalyticDG04> {
+class MyRemapDG : public RemapDG_Tests<AnalyticDG08b> {
  public:
   MyRemapDG(const Teuchos::RCP<const AmanziMesh::Mesh> mesh0,
             const Teuchos::RCP<AmanziMesh::Mesh> mesh1,
             Teuchos::ParameterList& plist, double T1)
-    : RemapDG_Tests<AnalyticDG04>(mesh0, mesh1, plist),
+    : RemapDG_Tests<AnalyticDG08b>(mesh0, mesh1, plist),
       T1_(T1),
       tini_(0.0) {};
   ~MyRemapDG() {};
@@ -316,8 +316,8 @@ void RemapTestsCurved(const Amanzi::Explicit_TI::method_t& rk_method,
                                         .sublist("flux operator").sublist("schema");
   auto dg = Teuchos::rcp(new WhetStone::DG_Modal(dg_list, mesh0));
 
-  AnalyticDG04 ana(mesh0, order, true);
-  // ana.set_shapes(true, true, false);
+  AnalyticDG08b ana(mesh0, order, true);
+  ana.set_shapes(true, true, true);
   ana.InitialGuess(*dg, p1c, 1.0);
 
   // visualize initial solution
@@ -491,18 +491,17 @@ TEST(REMAP_CURVED_2D) {
   // RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, 0.1, 6, 40, 0.025);
   */
 
-  /*
   int nloop = 40;
   double dT(0.0025 * nloop), T1(1.0 / nloop);
   auto rk_method = Amanzi::Explicit_TI::tvd_3rd_order;
   std::string maps = "VEM";
   int deform = 6;
-  RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, dT,   deform, nloop, T1);
-  RemapTestsCurved(rk_method, maps, "test/circle_quad20.exo", 20,0,0, dT/2, deform, nloop, T1);
+  // RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, dT,   deform, nloop, T1);
+  // RemapTestsCurved(rk_method, maps, "test/circle_quad20.exo", 20,0,0, dT/2, deform, nloop, T1);
   RemapTestsCurved(rk_method, maps, "test/circle_poly40.exo", 40,0,0, dT/4, deform, nloop, T1);
-  RemapTestsCurved(rk_method, maps, "test/circle_poly80.exo", 80,0,0, dT/8, deform, nloop, T1);
-  */
+  // RemapTestsCurved(rk_method, maps, "test/circle_poly80.exo", 80,0,0, dT/8, deform, nloop, T1);
 
+  /*
   int nloop = 1;
   double dT(0.02 * nloop), T1(1.0 / nloop);
   auto rk_method = Amanzi::Explicit_TI::tvd_3rd_order;
@@ -512,6 +511,7 @@ TEST(REMAP_CURVED_2D) {
   RemapTestsCurved(rk_method, maps, "",  32, 32,0, dT/2, deform, nloop, T1);
   RemapTestsCurved(rk_method, maps, "",  64, 64,0, dT/4, deform, nloop, T1);
   RemapTestsCurved(rk_method, maps, "", 128,128,0, dT/8, deform, nloop, T1);
+  */
 
   /*
   int nloop = 1;
