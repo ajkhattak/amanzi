@@ -31,7 +31,7 @@ namespace WhetStone {
 * Stiffness matrix: a wrapper for other low-level routines
 ****************************************************************** */
 int MFD3D_Elasticity::StiffnessMatrix_LocalStress(
-   int v, const std::vector<Tensor>& T, DenseMatrix& A)
+   int v, const std::vector<Tensor>& T, DenseMatrix& A, DenseMatrix& B)
 {
   DenseMatrix M, D, S;
   LocalStressMatrices_(v, T, M, D, S);
@@ -39,16 +39,16 @@ int MFD3D_Elasticity::StiffnessMatrix_LocalStress(
   DenseMatrix DT(D.NumCols(), D.NumRows()), ST(S.NumCols(), S.NumRows());
   DT.Transpose(D);
   ST.Transpose(S);
-  M.Inverse();
+  M.InverseMoorePenrose();
 
   auto Q11 = DT * M * D;
   auto Q12 = DT * M * S;
   auto Q22 = ST * M * S;
-  DenseMatrix Q21(Q12.NumCols(), Q12.NumRows());
-  Q21.Transpose(Q12);
-  Q22.Inverse();
+  auto Q21 = ST * M * D;
+  Q22.InverseMoorePenrose();
 
   A = Q11 - Q12 * Q22 * Q21;
+  B = (DT - Q12 * Q22 * ST) * M;
   
   return WHETSTONE_ELEMENTAL_MATRIX_OK;
 }
@@ -68,8 +68,10 @@ void MFD3D_Elasticity::LocalStressMatrices_(
   mesh_->node_get_cells(v, AmanziMesh::Parallel_type::ALL, &cells);
   int nfaces = faces.size();
   int ncells = cells.size();
+  AMANZI_ASSERT(ncells > 0);
 
-  int nk = d_ * (d_ - 1) / 2;
+  int nd = d_ * (d_ + 1) / 2;  // symmetric tensors
+  int nk = d_ * (d_ - 1) / 2;  // skew-symmetric tensors
   M.Reshape(d_ * nfaces, d_ * nfaces);
   D.Reshape(d_ * nfaces, d_ * ncells);
   S.Reshape(d_ * nfaces, nk);
@@ -78,23 +80,37 @@ void MFD3D_Elasticity::LocalStressMatrices_(
   D.PutScalar(0.0);
   S.PutScalar(0.0);
 
-  DenseMatrix Mcorner, N(d_, d_), R(d_, d_);
-  DenseVector Dcorner(d_);
+  // basis of stresses (symmetric stresses + non-symmetric)
+  std::vector<Tensor> vE;
 
-  // skew-symmetric matrix
-  int m(0);
-  std::vector<DenseMatrix> Skew(nk);
+  for (int i = 0; i < d_; ++i) {
+    Tensor E(d_, 2);
+    E(i, i) = 1.0;
+    vE.push_back(E);
+  }
+
   for (int i = 0; i < d_; ++i) {
     for (int j = i + 1; j < d_; ++j) {
-      Skew[m].Reshape(d_, d_);
-      Skew[m].PutScalar(0.0);
-
-      Skew[m](i, j) = 1.0;
-      Skew[m](j, i) =-1.0;
-      m++;
+      Tensor E(d_, 2);
+      E(i, j) = E(j, i) = 1.0;
+      vE.push_back(E);
     }
   }
 
+  for (int i = 0; i < d_; ++i) {
+    for (int j = i + 1; j < d_; ++j) {
+      Tensor E(d_, 2);
+      E(i, j) = 1.0;
+      E(j, i) =-1.0;
+      vE.push_back(E);
+    }
+  }
+
+  // node
+  AmanziGeometry::Point xv(d_);
+  mesh_->node_get_coordinates(v, &xv);
+
+  // main loop over cells around the given node
   for (int n = 0; n < ncells; ++n) {
     int c = cells[n];
     const AmanziGeometry::Point& xc = mesh_->cell_centroid(c);
@@ -104,26 +120,49 @@ void MFD3D_Elasticity::LocalStressMatrices_(
     int nvc = vcfaces.size();
     AMANZI_ASSERT(nvc == d_);
 
-    // generate corner matrix for one component
+    // -- generate auxiliary corner matrix for one component
+    int mx = nvc * d_, nx = d_ * d_;
+    DenseMatrix Mcorner(mx, nx), Ncorner(mx, nx), Rcorner(mx, nx);
+    DenseVector Dcorner(nvc);
+
     for (int i = 0; i < nvc; i++) {
       int f = vcfaces[i];
-      int k = std::distance(cfaces.begin(), std::find(cfaces.begin(), cfaces.end(), f));
+      int m = std::distance(cfaces.begin(), std::find(cfaces.begin(), cfaces.end(), f));
 
       double area = mesh_->face_area(f);
       const AmanziGeometry::Point& xf = mesh_->face_centroid(f);
-      AmanziGeometry::Point conormal = T[n] * mesh_->face_normal(f);
+      const AmanziGeometry::Point& normal = mesh_->face_normal(f);
 
       double facet_area = area / 2;  // FIXME
-      for (int j = 0; j < d_; ++j) {
-        N(i, j) = conormal[j] / area;
-        R(i, j) = cdirs[k] * (xf[j] - xc[j]) * facet_area;
-      }
+      Dcorner(i) = cdirs[m] * facet_area;
 
-      Dcorner(i) = cdirs[k] * facet_area;
+      for (int j = 0; j < d_ * d_; ++j) {
+        auto conormal = (T[n] * vE[j]) * (normal / area);
+        // auto dx = vE[j] * ((xf + xv) / 2 - xc);
+        auto dx = vE[j] * (xf - xc);
+
+        for (int k = 0; k < d_; ++k) {
+          Ncorner(nvc * k + i, j) = conormal[k];
+          Rcorner(nvc * k + i, j) = cdirs[m] * dx[k] * facet_area;
+        }
+      }
     }
 
-    N.Inverse();
-    Mcorner = R * N;
+    /*
+    auto R = Rcorner.SubMatrix(0, mx, 0, nd);
+    auto N = Ncorner.SubMatrix(0, mx, 0, nd);
+
+    DenseMatrix NT(R.NumCols(), N.NumRows());
+    NT.Transpose(N);
+    
+    auto NN = NT * N;
+    NN.Inverse();
+    Mcorner = R * NN * NT;
+    StabilityScalar_(N, Mcorner);
+    */
+
+    Ncorner.InverseMoorePenrose();
+    Mcorner = Rcorner * Ncorner;
 
     // assemble mass matrices
     for (int i = 0; i < nvc; i++) {
@@ -133,7 +172,9 @@ void MFD3D_Elasticity::LocalStressMatrices_(
         int l = std::distance(faces.begin(), std::find(faces.begin(), faces.end(), vcfaces[j]));
 
         for (int s = 0; s < d_; ++s) { 
-          M(d_ * k + s, d_ * l + s) += Mcorner(i, j);
+          for (int r = 0; r < d_; ++r) { 
+            M(d_ * k + s, d_ * l + r) += Mcorner(nvc * s + i, nvc * r + j);
+          }
         }
       }
     }
@@ -148,12 +189,10 @@ void MFD3D_Elasticity::LocalStressMatrices_(
 
     // assemble rotation matrices
     for (int m = 0; m < nk; ++m) {
-      auto tmp = R * Skew[m];
-
       for (int i = 0; i < nvc; i++) {
         int k = std::distance(faces.begin(), std::find(faces.begin(), faces.end(), vcfaces[i]));
         for (int s = 0; s < d_; ++s) { 
-          S(d_ * k + s, m) += tmp(i, s);
+          S(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);
         }
       }
     }

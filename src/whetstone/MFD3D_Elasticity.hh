@@ -58,7 +58,7 @@ class MFD3D_Elasticity : public MFD3D {
   virtual int StiffnessMatrix(int c, const Tensor& T, DenseMatrix& A) override;
 
   // special methods
-  int StiffnessMatrix_LocalStress(int c, const std::vector<Tensor>& T, DenseMatrix& A);
+  int StiffnessMatrix_LocalStress(int c, const std::vector<Tensor>& T, DenseMatrix& A, DenseMatrix& B);
 
   // optimization methods (mainly for research, since the maximum principle does not exists)
   int StiffnessMatrixOptimized(int c, const Tensor& T, DenseMatrix& A);

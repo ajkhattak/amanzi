@@ -31,6 +31,7 @@
 // Amanzi::Operators
 #include "PDE_Elasticity.hh"
 
+#include "MeshDeformation.hh"
 #include "AnalyticElasticity01.hh"
 #include "AnalyticElasticity03.hh"
 #include "Verification.hh"
@@ -217,17 +218,21 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   Teuchos::ParameterList plist = xmlreader.getParameters();
 
   // create the MSTK mesh framework 
-  // -- geometric model is not created. Instead, we specify boundary conditions
-  // -- using centroids of mesh faces.
-  MeshFactory meshfactory(comm);
+  Teuchos::ParameterList region_list = plist.sublist("regions");
+  Teuchos::RCP<GeometricModel> gm = Teuchos::rcp(new GeometricModel(2, region_list, *comm));
+
+  MeshFactory meshfactory(comm, gm);
   meshfactory.set_preference(Preference({Framework::MSTK}));
-  Teuchos::RCP<const Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 4, 4);
-  // Teuchos::RCP<const Mesh> mesh = meshfactory.create("test/median255x256.exo");
+  Teuchos::RCP<Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 10, 10);
+  // Teuchos::RCP<Mesh> mesh = meshfactory.create("test/median7x8.exo");
   Teuchos::ParameterList op_list = plist.sublist("PK operator").sublist("elasticity operator local stress");
+
+  DeformMesh(mesh, 1, 1.0);
 
   // -- general information about mesh
   int ncells = mesh->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::OWNED);
   int nfaces = mesh->num_entities(AmanziMesh::FACE, AmanziMesh::Parallel_type::OWNED);
+  int ncells_wghost = mesh->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::ALL);
   int nfaces_wghost = mesh->num_entities(AmanziMesh::FACE, AmanziMesh::Parallel_type::ALL);
 
   // select an analytic solution for error calculations and setup of
@@ -235,7 +240,7 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   AnalyticElasticity03 ana(mesh);
 
   Teuchos::RCP<std::vector<WhetStone::Tensor> > K = Teuchos::rcp(new std::vector<WhetStone::Tensor>());
-  for (int c = 0; c < ncells; c++) {
+  for (int c = 0; c < ncells_wghost; c++) {
     const Point& xc = mesh->cell_centroid(c);
     const WhetStone::Tensor& Kc = ana.Tensor(xc, 0.0);
     K->push_back(Kc);
@@ -294,8 +299,7 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
 
   // Test SPD properties of the matrix and preconditioner.
   VerificationCV ver(global_op);
-  // ver.CheckMatrixSPD(true, true);
-  // ver.CheckPreconditionerSPD(1e-12, true, true);
+  ver.CheckSpectralBounds(3);
 
   // solve the problem
   Teuchos::ParameterList lop_list = plist.sublist("solvers")
@@ -310,7 +314,7 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   ver.CheckResidual(solution, 1.0e-12);
 
   if (MyPID == 0) {
-    std::cout << "elasticity solver (pcg): ||r||=" << gmres.residual() 
+    std::cout << "elasticity solver (gmres): ||r||=" << gmres.residual() 
               << " itr=" << gmres.num_itrs()
               << " code=" << gmres.returned_code() << std::endl;
   }
