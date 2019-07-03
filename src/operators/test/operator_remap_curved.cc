@@ -34,16 +34,16 @@
 #include "MeshDeformation.hh"
 #include "RemapDG_Tests.hh"
 
-#include "AnalyticDG08b.hh"
+#include "AnalyticDG04.hh"
 
 namespace Amanzi {
 
-class MyRemapDG : public RemapDG_Tests<AnalyticDG08b> {
+class MyRemapDG : public RemapDG_Tests<AnalyticDG04> {
  public:
   MyRemapDG(const Teuchos::RCP<const AmanziMesh::Mesh> mesh0,
             const Teuchos::RCP<AmanziMesh::Mesh> mesh1,
             Teuchos::ParameterList& plist, double T1)
-    : RemapDG_Tests<AnalyticDG08b>(mesh0, mesh1, plist),
+    : RemapDG_Tests<AnalyticDG04>(mesh0, mesh1, plist),
       T1_(T1),
       tini_(0.0) {};
   ~MyRemapDG() {};
@@ -287,15 +287,18 @@ void RemapTestsCurved(const Amanzi::Explicit_TI::method_t& rk_method,
   }
 
   // create initial mesh
+  Teuchos::ParameterList region_list = plist.sublist("regions");
+  Teuchos::RCP<GeometricModel> gm = Teuchos::rcp(new GeometricModel(dim, region_list, *comm));
+
   auto mlist = Teuchos::rcp(new Teuchos::ParameterList(plist.sublist("mesh")));
   Teuchos::RCP<MeshCurved> mesh0, mesh1;
 
   if (dim == 2 && ny != 0) {
-    mesh0 = Teuchos::rcp(new MeshCurved(0.0, 0.0, 1.0, 1.0, nx, ny, comm, mlist));
-    mesh1 = Teuchos::rcp(new MeshCurved(0.0, 0.0, 1.0, 1.0, nx, ny, comm, mlist));
+    mesh0 = Teuchos::rcp(new MeshCurved(0.0, 0.0, 1.0, 1.0, nx, ny, comm, gm, mlist));
+    mesh1 = Teuchos::rcp(new MeshCurved(0.0, 0.0, 1.0, 1.0, nx, ny, comm, gm, mlist));
   } else if (ny == 0) {
-    mesh0 = Teuchos::rcp(new MeshCurved(file_name, comm, mlist));
-    mesh1 = Teuchos::rcp(new MeshCurved(file_name, comm, mlist));
+    mesh0 = Teuchos::rcp(new MeshCurved(file_name, comm, gm, mlist));
+    mesh1 = Teuchos::rcp(new MeshCurved(file_name, comm, gm, mlist));
   }
 
   int ncells_owned = mesh0->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::OWNED);
@@ -316,8 +319,8 @@ void RemapTestsCurved(const Amanzi::Explicit_TI::method_t& rk_method,
                                         .sublist("flux operator").sublist("schema");
   auto dg = Teuchos::rcp(new WhetStone::DG_Modal(dg_list, mesh0));
 
-  AnalyticDG08b ana(mesh0, order, true);
-  ana.set_shapes(true, true, true);
+  AnalyticDG04 ana(mesh0, order, true);
+  // ana.set_shapes(true, true, true);
   ana.InitialGuess(*dg, p1c, 1.0);
 
   // visualize initial solution
@@ -481,7 +484,6 @@ void RemapTestsCurved(const Amanzi::Explicit_TI::method_t& rk_method,
 }
 
 TEST(REMAP_CURVED_2D) {
-  /*
   int nloop = 2;
   double dT(0.1), T1(1.0 / nloop);
   auto rk_method = Amanzi::Explicit_TI::heun_euler;
@@ -489,17 +491,18 @@ TEST(REMAP_CURVED_2D) {
   int deform = 1;
   RemapTestsCurved(rk_method, maps, "", 8,8,0, dT, deform, nloop, T1);
   // RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, 0.1, 6, 40, 0.025);
-  */
 
+  /*
   int nloop = 40;
   double dT(0.0025 * nloop), T1(1.0 / nloop);
   auto rk_method = Amanzi::Explicit_TI::tvd_3rd_order;
   std::string maps = "VEM";
   int deform = 6;
-  // RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, dT,   deform, nloop, T1);
-  // RemapTestsCurved(rk_method, maps, "test/circle_quad20.exo", 20,0,0, dT/2, deform, nloop, T1);
+  RemapTestsCurved(rk_method, maps, "test/circle_quad10.exo", 10,0,0, dT,   deform, nloop, T1);
+  RemapTestsCurved(rk_method, maps, "test/circle_quad20.exo", 20,0,0, dT/2, deform, nloop, T1);
   RemapTestsCurved(rk_method, maps, "test/circle_poly40.exo", 40,0,0, dT/4, deform, nloop, T1);
-  // RemapTestsCurved(rk_method, maps, "test/circle_poly80.exo", 80,0,0, dT/8, deform, nloop, T1);
+  RemapTestsCurved(rk_method, maps, "test/circle_poly80.exo", 80,0,0, dT/8, deform, nloop, T1);
+  */
 
   /*
   int nloop = 1;
