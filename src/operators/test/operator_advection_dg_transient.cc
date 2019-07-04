@@ -358,17 +358,17 @@ void AdvectionFn<Analytic>::FunctionalTimeDerivative(
   op_flux->SetBCs(bc, bc);
   op_flux->Setup(velc, velf);
   op_flux->UpdateMatrices(velf.ptr());
-  op_flux->local_matrices()->Rescale(weak_sign_);
+  op_flux->local_op()->Rescale(weak_sign_);
   op_flux->ApplyBCs(true, true, true);
 
   op_adv->SetupPolyVector(velc);
   op_adv->UpdateMatrices();
-  op_adv->local_matrices()->Rescale(-weak_sign_);
+  op_adv->local_op()->Rescale(-weak_sign_);
 
   if (divergence_term_) {
     op_reac->SetupPoly(divc);
     op_reac->UpdateMatrices();
-    op_reac->local_matrices()->Rescale(-weak_sign_);
+    op_reac->local_op()->Rescale(-weak_sign_);
   }
 
   if (setup_) {
