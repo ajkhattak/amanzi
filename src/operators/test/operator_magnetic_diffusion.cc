@@ -27,6 +27,7 @@
 #include "MeshFactory.hh"
 #include "MFD3D_Electromagnetics.hh"
 #include "Tensor.hh"
+#include "WhetStoneMeshUtils.hh"
 
 // Amanzi::Operators
 #include "Operator.hh"
@@ -37,10 +38,11 @@
 
 #include "AnalyticElectromagnetics04.hh"
 #include "AnalyticElectromagnetics05.hh"
+#include "MeshDeformation.hh"
 
 /* *****************************************************************
 * Testing operators for Maxwell-type problems: 2D 
-* Magnetic flux B = (Bx, By, 0), electrif field E = (0, 0, Ez)
+* Magnetic flux B = (Bx, By, 0), electric field E = (0, 0, Ez)
 ***************************************************************** */
 template<class Analytic>
 void MagneticDiffusion2D(double dt, double tend, 
@@ -238,6 +240,9 @@ void MagneticDiffusion2D(double dt, double tend,
       divB += tmp * tmp * vol; 
       errB += vol * (std::pow(sol[0][c], 2.0) + std::pow(sol[1][c], 2.0));
     }
+    ana.GlobalOp("sum", &avgB, 1);
+    ana.GlobalOp("sum", &divB, 1);
+    ana.GlobalOp("sum", &errB, 1);
 
     if (cycle == 1) divB0 = divB;
     CHECK_CLOSE(divB0, divB, 1e-8);
@@ -246,7 +251,7 @@ void MagneticDiffusion2D(double dt, double tend,
       std::cout << "time: " << told << "  ||r||=" << solver.residual() 
                 << " itr=" << solver.num_itrs() << "  energy= " << energy 
                 << "  heat= " << heat
-                << "  avgB=" << avgB / ncells_owned 
+                << "  avgB=" << avgB / Bf.GlobalLength()
                 << "  divB=" << std::pow(divB, 0.5) 
                 << "  ||B||=" << std::pow(errB, 0.5) << std::endl;
     }
@@ -278,6 +283,15 @@ void MagneticDiffusion2D(double dt, double tend,
 }
 
 
+TEST(MAGNETIC_DIFFUSION2D_RELAX) {
+  MagneticDiffusion2D<AnalyticElectromagnetics04>(0.7, 5.9, 8,18, -4.0,-10.0, 4.0,10.0, "structured");
+}
+
+TEST(MAGNETIC_DIFFUSION2D_CONVERGENCE) {
+  MagneticDiffusion2D<AnalyticElectromagnetics05>(0.01, 0.1, 10,10, 0.0,0.0, 1.0,1.0, "test/random10.exo");
+}
+
+
 /* *****************************************************************
 * Testing operators for Maxwell-type problems: 3D
 * **************************************************************** */
@@ -285,7 +299,7 @@ template<class Analytic>
 void MagneticDiffusion3D(double dt, double tend, bool convergence,
                     int nx, int ny, int nz,
                     double Xa, double Ya, double Za, double Xb, double Yb, double Zb,
-                    const std::string& name) {
+                    const std::string& name, int deform = 0) {
   using namespace Teuchos;
   using namespace Amanzi;
   using namespace Amanzi::AmanziMesh;
@@ -311,20 +325,34 @@ void MagneticDiffusion3D(double dt, double tend, bool convergence,
   meshfactory.set_preference(Preference({Framework::MSTK}));
 
   bool request_faces(true), request_edges(true);
-  RCP<const Mesh> mesh;
+  RCP<Mesh> mesh;
   if (name == "structured")
     mesh = meshfactory.create(Xa, Ya, Za, Xb, Yb, Zb, nx, ny, nz, request_faces, request_edges);
   else
     mesh = meshfactory.create(name, request_faces, request_edges);
     // mesh = meshfactory.create("test/hex_split_faces5.exo", request_faces, request_edges);
 
+  int ncells_owned = mesh->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::OWNED);
+
+  Analytic ana(mesh);
+
+  if (deform > 0) {
+    double vol0(0.0), vol1(0.0);
+    for (int c = 0; c < ncells_owned; ++c) vol0 += mesh->cell_volume(c);
+    DeformMesh(mesh, deform, 0.0);
+    for (int c = 0; c < ncells_owned; ++c) vol1 += mesh->cell_volume(c);
+
+    vol0 -= vol1;
+    ana.GlobalOp("sum", &vol0, 1);
+    if (MyPID == 0)
+      std::cout << "volume change after deformation=" << vol0 << std::endl;
+  }
+
   // create resistivity coefficient
   double told(0.0), tnew(dt);
-  Analytic ana(mesh);
   WhetStone::Tensor Kc(3, 2);
 
   Teuchos::RCP<std::vector<WhetStone::Tensor> > K = Teuchos::rcp(new std::vector<WhetStone::Tensor>());
-  int ncells_owned = mesh->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::OWNED);
 
   for (int c = 0; c < ncells_owned; c++) {
     const AmanziGeometry::Point& xc = mesh->cell_centroid(c);
@@ -377,8 +405,33 @@ void MagneticDiffusion3D(double dt, double tend, bool convergence,
     double area = mesh->face_area(f);
     const AmanziGeometry::Point& normal = mesh->face_normal(f);
     const AmanziGeometry::Point& xf = mesh->face_centroid(f);
-
+ 
     Bf[0][f] = (ana.magnetic_exact(xf, told) * normal) / area;
+    double tmp = Bf[0][f];
+
+{
+    int d = mesh->space_dimension(); 
+    double fct_area(0.0);
+    AmanziMesh::Entity_ID_List nodes;
+    std::vector<AmanziGeometry::Point> xy(d + 1); 
+
+    mesh->face_get_nodes(f, &nodes);
+    int nnodes = nodes.size();
+
+    xy[0] = WhetStone::face_geometric_center(*mesh, f);
+
+    Bf[0][f] = 0.0;
+    for (int k = 0; k < nnodes; ++k) {
+      int l = (k + 1) % nnodes;
+      mesh->node_get_coordinates(nodes[k], &(xy[1]));
+      mesh->node_get_coordinates(nodes[l], &(xy[2]));
+
+      AmanziGeometry::Point fct_normal = (xy[1] - xy[0]) ^ (xy[2] - xy[0]);
+      fct_area += norm(fct_normal);
+      Bf[0][f] += ana.magnetic_exact((xy[0] + xy[1] + xy[2]) / 3, told) * fct_normal;
+    }
+    Bf[0][f] /= fct_area;
+}
   }
   // CompositeVector B0(B);
   // Epetra_MultiVector& B0f = *B0.ViewComponent("face");
@@ -526,9 +579,9 @@ void MagneticDiffusion3D(double dt, double tend, bool convergence,
       }
     }
 
-    double err_in[2] = {errB, divB};
-    double err_out[2];
-    mesh->get_comm()->SumAll(err_in, err_out, 2);
+    ana.GlobalOp("sum", &avgB, 1);
+    ana.GlobalOp("sum", &divB, 1);
+    ana.GlobalOp("sum", &errB, 1);
 
     if (cycle == 1) divB0 = divB;
     CHECK_CLOSE(divB0, divB, 1e-8);
@@ -538,8 +591,8 @@ void MagneticDiffusion3D(double dt, double tend, bool convergence,
                 << " itr=" << solver.num_itrs() << "  energy= " << energy 
                 << "  heat= " << heat
                 << "  avgB=" << avgB / ncells_owned 
-                << "  divB=" << std::pow(err_out[1], 0.5) 
-                << "  errB=" << std::pow(err_out[0], 0.5) << std::endl;
+                << "  divB=" << std::pow(divB, 0.5) 
+                << "  errB=" << std::pow(errB, 0.5) << std::endl;
     }
 
     // visualization
@@ -567,21 +620,21 @@ void MagneticDiffusion3D(double dt, double tend, bool convergence,
     if (MyPID == 0) {
       if (enorm != 0.0) el2_err /= enorm; 
       if (bnorm != 0.0) bl2_err /= bnorm; 
-      printf("L2(e)=%10.7f  Inf(e)=%9.6f  L2(b)=%10.7f  Inf(b)=%9.6f\n",
+      printf("L2(e)=%12.9f  Inf(e)=%11.8f  L2(b)=%12.9f  Inf(b)=%11.8f\n",
           el2_err, einf_err, bl2_err, binf_err);
     }
   }
 }
 
-
-TEST(MAGNETIC_DIFFUSION2D_RELAX) {
-  MagneticDiffusion2D<AnalyticElectromagnetics04>(0.7, 5.9, 8,18, -4.0,-10.0, 4.0,10.0, "structured");
+/*
+TEST(MAGNETIC_DIFFUSION3D_AAA) {
+  int deform = 8;
+  MagneticDiffusion3D<AnalyticElectromagnetics05>(0.01,  0.1, true, 8, 8, 8, 0.0,0.0,0.0, 1.0,1.0,1.0, "structured", deform);
+  MagneticDiffusion3D<AnalyticElectromagnetics05>(0.005, 0.1, true,16,16,16, 0.0,0.0,0.0, 1.0,1.0,1.0, "structured", deform);
+  MagneticDiffusion3D<AnalyticElectromagnetics05>(0.0025,0.1, true,32,32,32, 0.0,0.0,0.0, 1.0,1.0,1.0, "structured", deform);
+  exit(0);
 }
-
-TEST(MAGNETIC_DIFFUSION2D_CONVERGENCE) {
-  MagneticDiffusion2D<AnalyticElectromagnetics05>(0.01, 0.1, 10,10, 0.0,0.0, 1.0,1.0, "test/random10.exo");
-  // MagneticDiffusion2D<AnalyticElectromagnetics05>(0.01 / 2, 0.1, 20,20, 0.0,0.0, 1.0,1.0, "structured");
-}
+*/
 
 TEST(MAGNETIC_DIFFUSION3D_RELAX) {
   MagneticDiffusion3D<AnalyticElectromagnetics04>(0.1, 0.5, false, 10,8,22, -4.0,-4.0,-10.0, 4.0,4.0,10.0, "structured");
