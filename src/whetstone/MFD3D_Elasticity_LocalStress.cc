@@ -158,7 +158,8 @@ void MFD3D_Elasticity::LocalStressMatrices_(
     auto NN = NT * N;
     NN.Inverse();
     Mcorner = R * NN * NT;
-    StabilityScalar_(N, Mcorner);
+    StabilityScalarNonSymmetric_(N, Mcorner);
+    Rcorner = Mcorner * Ncorner;
     */
 
     Ncorner.InverseMoorePenrose();

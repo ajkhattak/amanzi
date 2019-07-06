@@ -223,11 +223,12 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
 
   MeshFactory meshfactory(comm, gm);
   meshfactory.set_preference(Preference({Framework::MSTK}));
-  Teuchos::RCP<Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 10, 10);
+  Teuchos::RCP<Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 2, 2);
+  // Teuchos::RCP<Mesh> mesh = meshfactory.create("test/one_quad.exo");
   // Teuchos::RCP<Mesh> mesh = meshfactory.create("test/median7x8.exo");
   Teuchos::ParameterList op_list = plist.sublist("PK operator").sublist("elasticity operator local stress");
 
-  DeformMesh(mesh, 1, 1.0);
+  // DeformMesh(mesh, 1, 1.0);
 
   // -- general information about mesh
   int ncells = mesh->num_entities(AmanziMesh::CELL, AmanziMesh::Parallel_type::OWNED);
@@ -252,13 +253,15 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   std::vector<int>& bcf_model = bcf->bc_model();
   std::vector<Point>& bcf_value = bcf->bc_value_point();
 
-  for (int f = 0; f < nfaces_wghost; f++) {
+  const auto& fmap = mesh->face_map(true);
+  const auto& bmap = mesh->exterior_face_map(true);
+
+  for (int bf = 0; bf < bmap.NumMyElements(); ++bf) {
+    int f = fmap.LID(bmap.GID(bf));
     const Point& xf = mesh->face_centroid(f);
-    if (fabs(xf[0]) < 1e-6 || fabs(xf[0] - 1.0) < 1e-6 ||
-        fabs(xf[1]) < 1e-6 || fabs(xf[1] - 1.0) < 1e-6) {
-      bcf_model[f] = OPERATOR_BC_DIRICHLET;
-      bcf_value[f] = ana.velocity_exact(xf, 0.0);
-    }
+
+    bcf_model[f] = OPERATOR_BC_DIRICHLET;
+    bcf_value[f] = ana.velocity_exact(xf, 0.0);
   }
 
   // create and initialize a PDE 
@@ -299,7 +302,7 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
 
   // Test SPD properties of the matrix and preconditioner.
   VerificationCV ver(global_op);
-  ver.CheckSpectralBounds(3);
+  // ver.CheckSpectralBounds(3);
 
   // solve the problem
   Teuchos::ParameterList lop_list = plist.sublist("solvers")
