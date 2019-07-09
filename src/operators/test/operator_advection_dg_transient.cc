@@ -814,7 +814,7 @@ void Transient(std::string filename, int nx, int ny, int nz,
       const Epetra_MultiVector& p = *sol.ViewComponent("cell");
   
       io.InitializeCycle(t, nstep);
-      io.WriteVector(*p(0), "solution");
+      io.WriteVector(*p(0), "solution", AmanziMesh::CELL);
       io.FinalizeCycle();
     }
 
