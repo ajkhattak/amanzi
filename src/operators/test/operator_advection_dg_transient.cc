@@ -891,6 +891,10 @@ void Transient(std::string filename, int nx, int ny, int nz,
 
 TEST(OPERATOR_ADVECTION_TRANSIENT_DG) {
   double dT(0.1), T1(1.0);
+dT = 0.01;
+Transient<AnalyticDG07, Amanzi::AdvectionFn_LevelSet<AnalyticDG07> >("square", 24, 24, 0, dT/4,  T1, false, "primal");
+exit(0);
+
   exact_solution_expected = true;
   Transient<AnalyticDG02b, Amanzi::AdvectionFn_Projection<AnalyticDG02b> >("square", 4,4,0, dT,T1, false);
   Transient<AnalyticDG02b, Amanzi::AdvectionFn_Projection<AnalyticDG02b> >("square", 4,4,0, dT,T1, false, "gauss points");

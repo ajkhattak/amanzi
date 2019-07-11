@@ -2125,7 +2125,7 @@ In the fracture region, we have \citep{simunek-vangenuchten_2008}
   =
   - \boldsymbol{\nabla} \cdot (\boldsymbol{q}_l C_{lf}) 
   + \boldsymbol{\nabla} \cdot (\phi_f\, s_{lf}\, (\boldsymbol{D}_l + \tau_f M) \boldsymbol{\nabla} C_{lf}) 
-  - \frac{\phi_m\,\tau_m}{L_m}\, M \nabla C_m - \Sigma_w C^* + Q_f,
+  + \frac{\phi_m\,\tau_m}{L_m}\, M \nabla C_m - \Sigma_w C^* = Q_f,
 
 where 
 :math:`\phi_f` is fracture porosity,

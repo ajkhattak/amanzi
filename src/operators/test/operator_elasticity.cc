@@ -202,7 +202,7 @@ TEST(OPERATOR_ELASTICITY_EXACTNESS) {
 /* *****************************************************************
 * Elasticity model: convergence test.
 ***************************************************************** */
-TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
+void RunTestLocalStress(const std::string& filename) {
   using namespace Amanzi;
   using namespace Amanzi::AmanziMesh;
   using namespace Amanzi::AmanziGeometry;
@@ -223,9 +223,8 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
 
   MeshFactory meshfactory(comm, gm);
   meshfactory.set_preference(Preference({Framework::MSTK}));
-  Teuchos::RCP<Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 2, 2);
-  // Teuchos::RCP<Mesh> mesh = meshfactory.create("test/one_quad.exo");
-  // Teuchos::RCP<Mesh> mesh = meshfactory.create("test/median7x8.exo");
+  // Teuchos::RCP<Mesh> mesh = meshfactory.create(0.0, 0.0, 1.0, 1.0, 2, 2);
+  Teuchos::RCP<Mesh> mesh = meshfactory.create(filename);
   Teuchos::ParameterList op_list = plist.sublist("PK operator").sublist("elasticity operator local stress");
 
   // DeformMesh(mesh, 1, 1.0);
@@ -325,13 +324,31 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   // compute velocity error
   double unorm, ul2_err, uinf_err;
   ana.VectorCellError(solution, 0.0, unorm, ul2_err, uinf_err);
+  int ndofs = 2 * mesh->cell_map(false).NumGlobalElements();
 
   if (MyPID == 0) {
     ul2_err /= unorm;
-    printf("L2(u)=%12.8g  Inf(u)=%12.8g  itr=%3d\n", ul2_err, uinf_err, gmres.num_itrs());
+    printf("L2(u)=%12.8g  Inf(u)=%12.8g  itr=%3d  DOFs=%6d\n", ul2_err, uinf_err, gmres.num_itrs(), ndofs);
 
     CHECK(ul2_err < 0.1);
-    CHECK(gmres.num_itrs() < 15);
+    // CHECK(gmres.num_itrs() < 15);
   }
 }
 
+TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
+  /*
+  RunTestLocalStress("test/triangular8.exo");
+  RunTestLocalStress("test/triangular16.exo");
+  RunTestLocalStress("test/triangular32.exo");
+  RunTestLocalStress("test/triangular64.exo");
+  RunTestLocalStress("test/triangular128.exo");
+  */
+  RunTestLocalStress("test/mesh_poly40x40.exo");
+  /*
+  RunTestLocalStress("test/mesh_poly20x20.exo");
+  RunTestLocalStress("test/mesh_poly40x40.exo");
+  RunTestLocalStress("test/mesh_poly80x80.exo");
+  RunTestLocalStress("test/mesh_poly160x160.exo");
+  RunTestLocalStress("test/mesh_poly320x320.exo");
+  */
+}

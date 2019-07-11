@@ -33,22 +33,21 @@ namespace WhetStone {
 int MFD3D_Elasticity::StiffnessMatrix_LocalStress(
    int v, const std::vector<Tensor>& T, DenseMatrix& A, DenseMatrix& B)
 {
-  DenseMatrix M, D, S;
-  LocalStressMatrices_(v, T, M, D, S);
+  DenseMatrix M, D, S1, S2;
+  LocalStressMatrices_(v, T, M, D, S1, S2);
 
-  DenseMatrix DT(D.NumCols(), D.NumRows()), ST(S.NumCols(), S.NumRows());
+  DenseMatrix DT(D.NumCols(), D.NumRows());
   DT.Transpose(D);
-  ST.Transpose(S);
   M.InverseMoorePenrose();
 
   auto Q11 = DT * M * D;
-  auto Q12 = DT * M * S;
-  auto Q22 = ST * M * S;
-  auto Q21 = ST * M * D;
-  Q22.InverseMoorePenrose();
+  auto Q12 = DT * M * S1;
+  auto Q22 = S2 * M * S1;
+  auto Q21 = S2 * M * D;
+  Q22.Inverse();
 
   A = Q11 - Q12 * Q22 * Q21;
-  B = (DT - Q12 * Q22 * ST) * M;
+  B = (DT - Q12 * Q22 * S2) * M;
   
   return WHETSTONE_ELEMENTAL_MATRIX_OK;
 }
@@ -59,7 +58,7 @@ int MFD3D_Elasticity::StiffnessMatrix_LocalStress(
 ****************************************************************** */
 void MFD3D_Elasticity::LocalStressMatrices_(
    int v, const std::vector<Tensor>& T,
-   DenseMatrix& M, DenseMatrix& D, DenseMatrix& S)
+   DenseMatrix& M, DenseMatrix& D, DenseMatrix& S1, DenseMatrix& S2)
 {
   Entity_ID_List cells, faces, cfaces, vcfaces;
   std::vector<int> cdirs;
@@ -74,11 +73,13 @@ void MFD3D_Elasticity::LocalStressMatrices_(
   int nk = d_ * (d_ - 1) / 2;  // skew-symmetric tensors
   M.Reshape(d_ * nfaces, d_ * nfaces);
   D.Reshape(d_ * nfaces, d_ * ncells);
-  S.Reshape(d_ * nfaces, nk);
+  S1.Reshape(d_ * nfaces, nk);
+  S2.Reshape(nk, d_ * nfaces);
 
   M.PutScalar(0.0);
   D.PutScalar(0.0);
-  S.PutScalar(0.0);
+  S1.PutScalar(0.0);
+  S2.PutScalar(0.0);
 
   // basis of stresses (symmetric stresses + non-symmetric)
   std::vector<Tensor> vE;
@@ -148,22 +149,13 @@ void MFD3D_Elasticity::LocalStressMatrices_(
       }
     }
 
-    /*
-    auto R = Rcorner.SubMatrix(0, mx, 0, nd);
-    auto N = Ncorner.SubMatrix(0, mx, 0, nd);
-
-    DenseMatrix NT(R.NumCols(), N.NumRows());
-    NT.Transpose(N);
-    
-    auto NN = NT * N;
-    NN.Inverse();
-    Mcorner = R * NN * NT;
-    StabilityScalarNonSymmetric_(N, Mcorner);
-    Rcorner = Mcorner * Ncorner;
-    */
-
-    Ncorner.InverseMoorePenrose();
+    DenseMatrix Ncorner_copy(Ncorner);
+    Ncorner.Inverse();
     Mcorner = Rcorner * Ncorner;
+
+    DenseMatrix MTcorner(Mcorner); 
+    MTcorner.Transpose();
+    auto RTcorner = MTcorner * Ncorner_copy;
 
     // assemble mass matrices
     for (int i = 0; i < nvc; i++) {
@@ -193,7 +185,8 @@ void MFD3D_Elasticity::LocalStressMatrices_(
       for (int i = 0; i < nvc; i++) {
         int k = std::distance(faces.begin(), std::find(faces.begin(), faces.end(), vcfaces[i]));
         for (int s = 0; s < d_; ++s) { 
-          S(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);
+          S1(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);
+          S2(m, d_ * k + s) += RTcorner(nvc * s + i, nd + m);
         }
       }
     }

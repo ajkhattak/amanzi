@@ -18,8 +18,8 @@
 
 class AnalyticElasticity03 : public AnalyticElasticityBase {
  public:
-  const double lambda = 0.0;
-  const double mu = 0.5;
+  const double lambda = 0.5;
+  const double mu = 1.0;
   const double as = 1.0;
  
   AnalyticElasticity03(Teuchos::RCP<const Amanzi::AmanziMesh::Mesh> mesh) :
@@ -37,7 +37,6 @@ class AnalyticElasticity03 : public AnalyticElasticityBase {
   Amanzi::AmanziGeometry::Point velocity_exact(const Amanzi::AmanziGeometry::Point& p, double t) { 
     double x = p[0];
     double y = p[1];
-    return Amanzi::AmanziGeometry::Point(x, 0.0);
     double tmp = x * (x - 1.0) * y * (y - 1.0);
     return Amanzi::AmanziGeometry::Point(as * tmp, tmp);
   }
@@ -49,7 +48,6 @@ class AnalyticElasticity03 : public AnalyticElasticityBase {
   Amanzi::AmanziGeometry::Point source_exact(const Amanzi::AmanziGeometry::Point& p, double t) { 
     double x = p[0];
     double y = p[1];
-    return Amanzi::AmanziGeometry::Point(0.0, 0.0);
 
     double a1 = 2 * as * (lambda + 2 * mu), a2 = 2 * (lambda + 2 * mu);
     double b1 = 2 * as * mu, b2 = 2 * mu;

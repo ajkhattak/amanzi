@@ -66,7 +66,7 @@ class MFD3D_Elasticity : public MFD3D {
 
  private:
   void LocalStressMatrices_(int v, const std::vector<Tensor>& T,
-                            DenseMatrix& M, DenseMatrix& D, DenseMatrix& S);
+                            DenseMatrix& M, DenseMatrix& D, DenseMatrix& S1, DenseMatrix& S2);
 
  private:
   int name_id_;
