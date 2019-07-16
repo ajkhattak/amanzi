@@ -58,10 +58,8 @@ class MeshFactory {
 
   // Get/set the geometric model
   //
-  Teuchos::RCP<const AmanziGeometry::GeometricModel> geometric_model() const {
-    return gm_; }
-  void set_geometric_model(const Teuchos::RCP<const AmanziGeometry::GeometricModel>& gm) {
-    gm_ = gm; }
+  Teuchos::RCP<const AmanziGeometry::GeometricModel> geometric_model() const { return gm_; }
+  void set_geometric_model(const Teuchos::RCP<const AmanziGeometry::GeometricModel>& gm) { gm_ = gm; }
 
   // Get/set the parameter list
   //
