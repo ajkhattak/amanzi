@@ -145,7 +145,7 @@ void AnalyticElasticityBase::VectorCellError(
     inf_err = std::max(inf_err, sqrt(tmp));
     unorm += L22(uexact) * vol;
     // std::cout << c << " uh=" << ucalc << " ex=" << uexact << " l2=" << l2_err << std::endl;
-    error[0][c] = tmp;
+    error[0][c] = sqrt(tmp);
   }
 #ifdef HAVE_MPI
   GlobalOp("sum", &unorm, 1);
@@ -161,6 +161,8 @@ void AnalyticElasticityBase::VectorCellError(
   Amanzi::OutputXDMF io(iolist, mesh_, true, false);
   io.InitializeCycle(t, 0);
   io.WriteVector(*error(0), "error", Amanzi::AmanziMesh::CELL);
+  io.WriteVector(*u_cell(0), "displacement-x", Amanzi::AmanziMesh::CELL);
+  io.WriteVector(*u_cell(1), "displacement-y", Amanzi::AmanziMesh::CELL);
   io.FinalizeCycle();
 }
 
