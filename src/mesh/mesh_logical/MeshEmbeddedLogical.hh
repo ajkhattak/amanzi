@@ -310,7 +310,7 @@ class MeshEmbeddedLogical : public Mesh {
   void cell_get_faces_and_dirs_internal_(const Entity_ID cellid,
           Entity_ID_List *faceids,
           std::vector<int> *face_dirs,
-          const bool ordered=false) const;
+          const bool ordered=false) const override;
 
   // Cells connected to a face - this function is implemented in each
   // mesh framework. The results are cached in the base class
