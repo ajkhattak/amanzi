@@ -139,8 +139,9 @@ void MFD3D_Elasticity::LocalStressMatrices_(
 
       for (int j = 0; j < d_ * d_; ++j) {
         auto conormal = (T[n] * vE[j]) * (normal / area);
+        auto dx = vE[j] * ((2 * xf + xv) / 3 - xc);
         // auto dx = vE[j] * ((xf + xv) / 2 - xc);
-        auto dx = vE[j] * (xf - xc);
+        // auto dx = vE[j] * (xf - xc);
 
         for (int k = 0; k < d_; ++k) {
           Ncorner(nvc * k + i, j) = conormal[k];

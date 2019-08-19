@@ -343,7 +343,7 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   RunTestLocalStress("test/triangular64.exo");
   RunTestLocalStress("test/triangular128.exo");
   */
-  RunTestLocalStress("test/mesh_poly40x40.exo");
+
   /*
   RunTestLocalStress("test/mesh_poly20x20.exo");
   RunTestLocalStress("test/mesh_poly40x40.exo");
