@@ -225,7 +225,7 @@ void RemapGCL(const Amanzi::Explicit_TI::method_t& rk_method,
   tvs2->PushBack(tvs0);
 
   Teuchos::RCP<TreeVector> p2 = Teuchos::rcp(new TreeVector(*tvs2));
-  Epetra_MultiVector& p2c = *p2->SubVector(0)->Data()->ViewComponent("cell", true);
+  Epetra_MultiVector& p2c = *p2->SubVector(0)->Data()->ViewComponent("cell");
 
   // we need dg to use correct scaling of basis functions
   Teuchos::ParameterList dglist = plist.sublist("PK operator")
