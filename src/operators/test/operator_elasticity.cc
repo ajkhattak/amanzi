@@ -336,19 +336,29 @@ void RunTestLocalStress(const std::string& filename) {
 }
 
 TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
-  /*
   RunTestLocalStress("test/triangular8.exo");
+  /*
   RunTestLocalStress("test/triangular16.exo");
   RunTestLocalStress("test/triangular32.exo");
   RunTestLocalStress("test/triangular64.exo");
   RunTestLocalStress("test/triangular128.exo");
-  */
 
-  /*
   RunTestLocalStress("test/mesh_poly20x20.exo");
   RunTestLocalStress("test/mesh_poly40x40.exo");
   RunTestLocalStress("test/mesh_poly80x80.exo");
   RunTestLocalStress("test/mesh_poly160x160.exo");
   RunTestLocalStress("test/mesh_poly320x320.exo");
+
+  RunTestLocalStress("test/median15x16.exo");
+  RunTestLocalStress("test/median32x33.exo");
+  RunTestLocalStress("test/median63x64.exo");
+  RunTestLocalStress("test/median127x128.exo");
+  RunTestLocalStress("test/median255x256.exo");
+
+  RunTestLocalStress("test/circle_quad10.exo");
+  RunTestLocalStress("test/circle_quad20.exo");
+  RunTestLocalStress("test/circle_quad40.exo");
+  RunTestLocalStress("test/circle_quad80.exo");
+  RunTestLocalStress("test/circle_quad160.exo");
   */
 }

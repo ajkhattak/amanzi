@@ -338,20 +338,31 @@ void RemapGCL(const Amanzi::Explicit_TI::method_t& rk_method,
 }
 
 TEST(REMAP_GEOMETRIC_CONSERVATION_LAW) {
-  int deform = 1;
+  int deform = 5;
   auto rk_method = Amanzi::Explicit_TI::tvd_3rd_order;
 
   double dT(0.1);
   RemapGCL(rk_method, "test/median15x16.exo",   16,1,0, dT/2, deform);
+
   /*
   RemapGCL(rk_method, "test/median32x33.exo",   32,1,0, dT/4, deform);
   RemapGCL(rk_method, "test/median63x64.exo",   64,1,0, dT/8, deform);
   RemapGCL(rk_method, "test/median127x128.exo",128,1,0, dT/16,deform);
+  */
 
+  /*
   double dT(0.025);
   RemapGCL(rk_method, "test/prism10.exo", 10,1,1, dT,   deform);
   RemapGCL(rk_method, "test/prism20.exo", 20,1,1, dT/2, deform);
   RemapGCL(rk_method, "test/prism40.exo", 40,1,1, dT/4, deform);
+  */
+
+  /*
+  double dT(0.005);
+  RemapGCL(rk_method, "test/voro05.exo",  5,1,1, dT,   deform);
+  RemapGCL(rk_method, "test/voro10.exo", 10,1,1, dT/2, deform);
+  RemapGCL(rk_method, "test/voro20.exo", 20,1,1, dT/4, deform);
+  RemapGCL(rk_method, "test/voro40.exo", 40,1,1, dT/8, deform);
   */
 }
 

@@ -44,7 +44,7 @@ int MFD3D_Elasticity::StiffnessMatrix_LocalStress(
   auto Q12 = DT * M * S1;
   auto Q22 = S2 * M * S1;
   auto Q21 = S2 * M * D;
-  Q22.Inverse();
+  Q22.InverseMoorePenrose();
 
   A = Q11 - Q12 * Q22 * Q21;
   B = (DT - Q12 * Q22 * S2) * M;
@@ -139,9 +139,9 @@ void MFD3D_Elasticity::LocalStressMatrices_(
 
       for (int j = 0; j < d_ * d_; ++j) {
         auto conormal = (T[n] * vE[j]) * (normal / area);
-        auto dx = vE[j] * ((2 * xf + xv) / 3 - xc);
+        // auto dx = vE[j] * ((2 * xf + xv) / 3 - xc);
         // auto dx = vE[j] * ((xf + xv) / 2 - xc);
-        // auto dx = vE[j] * (xf - xc);
+        auto dx = vE[j] * (xf - xc);
 
         for (int k = 0; k < d_; ++k) {
           Ncorner(nvc * k + i, j) = conormal[k];
@@ -151,12 +151,8 @@ void MFD3D_Elasticity::LocalStressMatrices_(
     }
 
     DenseMatrix Ncorner_copy(Ncorner);
-    Ncorner.Inverse();
+    Ncorner.InverseMoorePenrose();
     Mcorner = Rcorner * Ncorner;
-
-    DenseMatrix MTcorner(Mcorner); 
-    MTcorner.Transpose();
-    auto RTcorner = MTcorner * Ncorner_copy;
 
     // assemble mass matrices
     for (int i = 0; i < nvc; i++) {
@@ -187,7 +183,7 @@ void MFD3D_Elasticity::LocalStressMatrices_(
         int k = std::distance(faces.begin(), std::find(faces.begin(), faces.end(), vcfaces[i]));
         for (int s = 0; s < d_; ++s) { 
           S1(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);
-          S2(m, d_ * k + s) += RTcorner(nvc * s + i, nd + m);
+          S2(m, d_ * k + s) += Rcorner(nvc * s + i, nd + m);
         }
       }
     }

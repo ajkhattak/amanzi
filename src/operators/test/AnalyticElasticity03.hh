@@ -18,8 +18,8 @@
 
 class AnalyticElasticity03 : public AnalyticElasticityBase {
  public:
-  const double lambda = 0.5;
-  const double mu = 1.0;
+  const double lambda = 0.0;
+  const double mu = 0.5;
   const double as = 1.0;
  
   AnalyticElasticity03(Teuchos::RCP<const Amanzi::AmanziMesh::Mesh> mesh) :
