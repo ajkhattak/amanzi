@@ -21,6 +21,7 @@
 #include "MFD3D_Elasticity.hh"
 #include "PreconditionerFactory.hh"
 #include "WhetStoneDefs.hh"
+#include "WhetStoneMeshUtils.hh"
 
 // Amanzi::Operators
 #include "Op.hh"
@@ -163,7 +164,7 @@ void PDE_Elasticity::ApplyBCs_Node_Point_(
     bool primary, bool eliminate, bool essential_eqn)
 {
   const std::vector<int>& bc_model = bc.bc_model();
-  const std::vector<AmanziGeometry::Point>& bc_value = bc.bc_value_point();
+  const std::vector<std::vector<double> >& bc_value = bc.bc_value_vector();
 
   AmanziMesh::Entity_ID_List faces;
 
@@ -185,7 +186,7 @@ void PDE_Elasticity::ApplyBCs_Node_Point_(
     for (int n = 0; n != nfaces; ++n) {
       int f = faces[n];
       double area = mesh_->face_area(f) / 2;  // FIXME for 3D
-      AmanziGeometry::Point value = bc_value[f];
+      const std::vector<double>& value = bc_value[f];
 
       if (bc_model[f] == OPERATOR_BC_DIRICHLET) {
         for (int k = 0; k < d; ++k) {
@@ -193,8 +194,9 @@ void PDE_Elasticity::ApplyBCs_Node_Point_(
           WhetStone::DenseVector rhs_loc(nrows);
 
           if (eliminate) {
+            int pos = WhetStone::UniqueIndexFaceToNodes(*mesh_, f, v);
             for (int m = 0; m < nrows; m++) {
-              rhs_loc(m) = Anode(m, noff) * value[k] * area;
+              rhs_loc(m) = Anode(m, noff) * value[d * pos + k] * area;
             }
           }
 

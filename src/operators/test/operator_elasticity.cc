@@ -33,7 +33,7 @@
 
 #include "MeshDeformation.hh"
 #include "AnalyticElasticity01.hh"
-#include "AnalyticElasticity03.hh"
+#include "AnalyticElasticity04.hh"
 #include "Verification.hh"
 
 /* *****************************************************************
@@ -237,7 +237,7 @@ void RunTestLocalStress(const std::string& filename) {
 
   // select an analytic solution for error calculations and setup of
   // boundary conditions
-  AnalyticElasticity03 ana(mesh);
+  AnalyticElasticity04 ana(mesh);
 
   Teuchos::RCP<std::vector<WhetStone::Tensor> > K = Teuchos::rcp(new std::vector<WhetStone::Tensor>());
   for (int c = 0; c < ncells_wghost; c++) {
@@ -248,19 +248,30 @@ void RunTestLocalStress(const std::string& filename) {
 
   // populate boundary conditions: type (called model) and value
   // -- full velocity on boundary faces
-  Teuchos::RCP<BCs> bcf = Teuchos::rcp(new BCs(mesh, AmanziMesh::FACE, WhetStone::DOF_Type::POINT));
+  Teuchos::RCP<BCs> bcf = Teuchos::rcp(new BCs(mesh, AmanziMesh::FACE, WhetStone::DOF_Type::VECTOR));
   std::vector<int>& bcf_model = bcf->bc_model();
-  std::vector<Point>& bcf_value = bcf->bc_value_point();
+  std::vector<std::vector<double> >& bcf_value = bcf->bc_value_vector(4);
 
   const auto& fmap = mesh->face_map(true);
   const auto& bmap = mesh->exterior_face_map(true);
+
+  AmanziMesh::Entity_ID_List nodes;
+  Point xv(2), uf(2);
 
   for (int bf = 0; bf < bmap.NumMyElements(); ++bf) {
     int f = fmap.LID(bmap.GID(bf));
     const Point& xf = mesh->face_centroid(f);
 
+    mesh->face_get_nodes(f, &nodes);
+
     bcf_model[f] = OPERATOR_BC_DIRICHLET;
-    bcf_value[f] = ana.velocity_exact(xf, 0.0);
+
+    for (int i = 0; i < nodes.size(); ++i) {
+      mesh->node_get_coordinates(nodes[i], &xv);
+      uf = ana.velocity_exact((xf + xv) / 2, 0.0);
+      bcf_value[f][2 * i] = uf[0];
+      bcf_value[f][2 * i + 1] = uf[1];
+    }
   }
 
   // create and initialize a PDE 
@@ -338,6 +349,7 @@ void RunTestLocalStress(const std::string& filename) {
 TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   RunTestLocalStress("test/triangular8.exo");
   /*
+  RunTestLocalStress("test/triangular8.exo");
   RunTestLocalStress("test/triangular16.exo");
   RunTestLocalStress("test/triangular32.exo");
   RunTestLocalStress("test/triangular64.exo");

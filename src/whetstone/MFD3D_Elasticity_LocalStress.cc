@@ -124,7 +124,10 @@ void MFD3D_Elasticity::LocalStressMatrices_(
     // -- generate auxiliary corner matrix for one component
     int mx = nvc * d_, nx = d_ * d_;
     DenseMatrix Mcorner(mx, nx), Ncorner(mx, nx), Rcorner(mx, nx);
+    DenseMatrix Scorner(mx, nx),  Ycorner(mx, nx);
     DenseVector Dcorner(nvc);
+
+    double volume_corner(0.0);
 
     for (int i = 0; i < nvc; i++) {
       int f = vcfaces[i];
@@ -137,22 +140,29 @@ void MFD3D_Elasticity::LocalStressMatrices_(
       double facet_area = area / 2;  // FIXME
       Dcorner(i) = cdirs[m] * facet_area;
 
+      volume_corner += norm((xf -xc) ^ (xf - xv)) / 2;
+
       for (int j = 0; j < d_ * d_; ++j) {
         auto conormal = (T[n] * vE[j]) * (normal / area);
         // auto dx = vE[j] * ((2 * xf + xv) / 3 - xc);
-        // auto dx = vE[j] * ((xf + xv) / 2 - xc);
-        auto dx = vE[j] * (xf - xc);
+        auto dx = vE[j] * ((xf + xv) / 2 - xc);
+        // auto dx = vE[j] * (xf - xc);
 
         for (int k = 0; k < d_; ++k) {
+          Scorner(nvc * k + i, j) = normal[k] / area;
           Ncorner(nvc * k + i, j) = conormal[k];
           Rcorner(nvc * k + i, j) = cdirs[m] * dx[k] * facet_area;
         }
       }
     }
 
-    DenseMatrix Ncorner_copy(Ncorner);
     Ncorner.InverseMoorePenrose();
     Mcorner = Rcorner * Ncorner;
+
+    Ycorner.InverseMoorePenrose();
+    DenseMatrix ScornerT(Scorner);
+    ScornerT.Transpose();
+    Ycorner = Scorner * ScornerT * Ncorner;
 
     // assemble mass matrices
     for (int i = 0; i < nvc; i++) {
@@ -184,6 +194,7 @@ void MFD3D_Elasticity::LocalStressMatrices_(
         for (int s = 0; s < d_; ++s) { 
           S1(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);
           S2(m, d_ * k + s) += Rcorner(nvc * s + i, nd + m);
+          // S2(m, d_ * k + s) += Ycorner(nvc * s + i, nd + m) * volume_corner;
         }
       }
     }
