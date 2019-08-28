@@ -87,6 +87,8 @@ set(operators_inc_files
     PDE_Accumulation.hh
     PDE_Advection.hh
     PDE_AdvectionUpwind.hh
+    PDE_AdvectionUpwindDFN.hh    
+    PDE_AdvectionUpwindFracturedMatrix.hh
     PDE_AdvectionRiemann.hh
     PDE_CouplingFlux.hh
     PDE_Diffusion.hh
@@ -115,6 +117,7 @@ set(operators_inc_files
     TreeOperator.hh
     Reconstruction.hh
     ReconstructionCell.hh
+    UniqueLocalIndex.hh
     Upwind.hh
     UpwindArithmeticAverage.hh
     UpwindDivK.hh
@@ -142,6 +145,7 @@ add_amanzi_library(operators
                           PDE_Accumulation.cc
                           PDE_Abstract.cc
                           PDE_AdvectionUpwind.cc PDE_AdvectionRiemann.cc
+                          PDE_AdvectionUpwindFracturedMatrix.cc PDE_AdvectionUpwindDFN.cc                              
                           PDE_CouplingFlux.cc
                           PDE_DiffusionMFD.cc PDE_DiffusionMFDwithGravity.cc
                           PDE_DiffusionFV.cc PDE_DiffusionFVwithGravity.cc
@@ -159,6 +163,7 @@ add_amanzi_library(operators
                           TreeOperator.cc
                           ReconstructionCell.cc
                           RemapDG.cc RemapDG_Helper.cc RemapUtils.cc
+                          UniqueLocalIndex.cc
                           HEADERS ${operators_inc_files}
                    LINK_LIBS geometry mesh mesh_factory error_handling whetstone solvers data_structures ${Epetra_LIBRARIES})                          
 
@@ -255,11 +260,16 @@ if (BUILD_TESTS)
                     SOURCE test/Main.cc test/operator_advdiff.cc
                     LINK_LIBS ${amanzi_libs} ${UnitTest_LIBRARIES} ${HDF5_LIBRARIES})
 
-    # Test: matrices for surface
+    # Test: matrices for surface and fractures
     add_amanzi_test(operators_surface operators_surface
                     KIND unit
                     SOURCE test/Main.cc test/operator_advdiff_surface.cc
-                                        test/operator_fractures.cc
+                    LINK_LIBS ${amanzi_libs} ${UnitTest_LIBRARIES} ${HDF5_LIBRARIES})
+
+    add_amanzi_test(operators_dfn operators_dfn
+                    KIND unit
+                    SOURCE test/Main.cc test/operator_advection_dfn.cc
+                                        test/operator_diffusion_dfn.cc
                     LINK_LIBS ${amanzi_libs} ${UnitTest_LIBRARIES} ${HDF5_LIBRARIES})
 
     # Test: electromagnetics 
