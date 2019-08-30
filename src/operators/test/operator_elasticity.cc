@@ -33,7 +33,7 @@
 
 #include "MeshDeformation.hh"
 #include "AnalyticElasticity01.hh"
-#include "AnalyticElasticity04.hh"
+#include "AnalyticElasticity03.hh"
 #include "Verification.hh"
 
 /* *****************************************************************
@@ -237,7 +237,7 @@ void RunTestLocalStress(const std::string& filename) {
 
   // select an analytic solution for error calculations and setup of
   // boundary conditions
-  AnalyticElasticity04 ana(mesh);
+  AnalyticElasticity03 ana(mesh);
 
   Teuchos::RCP<std::vector<WhetStone::Tensor> > K = Teuchos::rcp(new std::vector<WhetStone::Tensor>());
   for (int c = 0; c < ncells_wghost; c++) {
@@ -347,8 +347,7 @@ void RunTestLocalStress(const std::string& filename) {
 }
 
 TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
-  RunTestLocalStress("test/triangular8.exo");
-  /*
+  // RunTestLocalStress("test/triangular8.exo");
   RunTestLocalStress("test/triangular8.exo");
   RunTestLocalStress("test/triangular16.exo");
   RunTestLocalStress("test/triangular32.exo");
@@ -372,5 +371,4 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   RunTestLocalStress("test/circle_quad40.exo");
   RunTestLocalStress("test/circle_quad80.exo");
   RunTestLocalStress("test/circle_quad160.exo");
-  */
 }

@@ -23,6 +23,7 @@
 #include "DenseMatrix.hh"
 #include "MFD3D_Elasticity.hh"
 #include "Tensor.hh"
+#include "WhetStoneMeshUtils.hh"
 
 namespace Amanzi {
 namespace WhetStone {
@@ -111,6 +112,10 @@ void MFD3D_Elasticity::LocalStressMatrices_(
   AmanziGeometry::Point xv(d_);
   mesh_->node_get_coordinates(v, &xv);
 
+  // double volume_dual(0.0);
+  // for (int n = 0; n < ncells; ++n)
+  //   volume_dual += mesh_->cell_volume(cells[n]);
+
   // main loop over cells around the given node
   for (int n = 0; n < ncells; ++n) {
     int c = cells[n];
@@ -124,7 +129,6 @@ void MFD3D_Elasticity::LocalStressMatrices_(
     // -- generate auxiliary corner matrix for one component
     int mx = nvc * d_, nx = d_ * d_;
     DenseMatrix Mcorner(mx, nx), Ncorner(mx, nx), Rcorner(mx, nx);
-    DenseMatrix Scorner(mx, nx),  Ycorner(mx, nx);
     DenseVector Dcorner(nvc);
 
     double volume_corner(0.0);
@@ -140,7 +144,13 @@ void MFD3D_Elasticity::LocalStressMatrices_(
       double facet_area = area / 2;  // FIXME
       Dcorner(i) = cdirs[m] * facet_area;
 
-      volume_corner += norm((xf -xc) ^ (xf - xv)) / 2;
+      volume_corner += norm((xf - xc) ^ (xf - xv)) / 2;
+
+      // for (int k = 0; k < d_; ++k) {
+      //   for (int l = 0; l < d_; ++l) {
+      //     Tcorner(nvc * k + l, d_ * l + i) = normal[k] / area;
+      //   }
+      // }
 
       for (int j = 0; j < d_ * d_; ++j) {
         auto conormal = (T[n] * vE[j]) * (normal / area);
@@ -149,7 +159,6 @@ void MFD3D_Elasticity::LocalStressMatrices_(
         // auto dx = vE[j] * (xf - xc);
 
         for (int k = 0; k < d_; ++k) {
-          Scorner(nvc * k + i, j) = normal[k] / area;
           Ncorner(nvc * k + i, j) = conormal[k];
           Rcorner(nvc * k + i, j) = cdirs[m] * dx[k] * facet_area;
         }
@@ -159,10 +168,13 @@ void MFD3D_Elasticity::LocalStressMatrices_(
     Ncorner.InverseMoorePenrose();
     Mcorner = Rcorner * Ncorner;
 
-    Ycorner.InverseMoorePenrose();
-    DenseMatrix ScornerT(Scorner);
-    ScornerT.Transpose();
-    Ycorner = Scorner * ScornerT * Ncorner;
+    Entity_ID_List nodes;
+    mesh_->cell_get_nodes(c, &nodes);
+    int pos = std::distance(nodes.begin(), std::find(nodes.begin(), nodes.end(), v));
+
+    double volume = mesh_->cell_volume(c);
+    std::vector<double> weights;
+    WhetStone::PolygonCentroidWeights(*mesh_, nodes, volume, weights);
 
     // assemble mass matrices
     for (int i = 0; i < nvc; i++) {
@@ -192,9 +204,8 @@ void MFD3D_Elasticity::LocalStressMatrices_(
       for (int i = 0; i < nvc; i++) {
         int k = std::distance(faces.begin(), std::find(faces.begin(), faces.end(), vcfaces[i]));
         for (int s = 0; s < d_; ++s) { 
-          S1(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);
-          S2(m, d_ * k + s) += Rcorner(nvc * s + i, nd + m);
-          // S2(m, d_ * k + s) += Ycorner(nvc * s + i, nd + m) * volume_corner;
+          S1(d_ * k + s, m) += Rcorner(nvc * s + i, nd + m);  // * weights[pos];
+          S2(m, d_ * k + s) += Rcorner(nvc * s + i, nd + m);  // * weights[pos];
         }
       }
     }
