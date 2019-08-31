@@ -347,7 +347,8 @@ void RunTestLocalStress(const std::string& filename) {
 }
 
 TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
-  // RunTestLocalStress("test/triangular8.exo");
+  RunTestLocalStress("test/triangular8.exo");
+  /*
   RunTestLocalStress("test/triangular8.exo");
   RunTestLocalStress("test/triangular16.exo");
   RunTestLocalStress("test/triangular32.exo");
@@ -371,4 +372,5 @@ TEST(OPERATOR_ELASTICITY_LOCAL_STRESS) {
   RunTestLocalStress("test/circle_quad40.exo");
   RunTestLocalStress("test/circle_quad80.exo");
   RunTestLocalStress("test/circle_quad160.exo");
+  */
 }
