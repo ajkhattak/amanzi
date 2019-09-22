@@ -237,16 +237,16 @@ class MeshEmbeddedLogical : public Mesh {
   // Epetra maps
   //------------
   virtual
-  const Epetra_Map& cell_map(bool include_ghost) const;
+  const Epetra_Map& cell_map(bool include_ghost) const override;
 
   virtual
-  const Epetra_Map& face_map(bool include_ghost) const;
+  const Epetra_Map& face_map(bool include_ghost) const override;
 
   virtual
-  const Epetra_Map& node_map(bool include_ghost) const;
+  const Epetra_Map& node_map(bool include_ghost) const override;
 
   virtual
-  const Epetra_Map& exterior_face_map(bool include_ghost) const;
+  const Epetra_Map& exterior_face_map(bool include_ghost) const override;
 
   virtual
   const Epetra_Map& exterior_node_map(bool include_ghost) const override;

@@ -101,7 +101,7 @@ class Transport_PK : public PK_Physical {
   void VV_CheckTracerBounds(Epetra_MultiVector& tracer, int component,
                             double lower_bound, double upper_bound, double tol = 0.0) const;
   void VV_CheckInfluxBC() const;
-  void VV_PrintSoluteExtrema(const Epetra_MultiVector& tcc_next, double dT_MPC);
+  void VV_PrintSoluteExtrema(const Epetra_MultiVector& tcc_next, double dT_MPC, const std::string& mesh_id);
   double VV_SoluteVolumeChangePerSecond(int idx_solute);
   void VV_PrintLimiterStatistics();
 
@@ -121,12 +121,7 @@ class Transport_PK : public PK_Physical {
                        const Epetra_MultiVector& tcc_prev, int n0, int n1);
   bool ComputeBCs_(std::vector<int>& bc_model, std::vector<double>& bc_value, int component);
 
-  // advection members
-  // -- advection in matrix
-  void AdvanceDonorUpwind(double dT);
-  // -- advection on non-manifolds
-  void AdvanceDonorUpwindNonManifold(double dT);
-  // -- tools
+  // tools
   void IdentifyUpwindCells();
 
   void InterpolateCellVector(

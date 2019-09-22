@@ -98,6 +98,15 @@ Teuchos::ParameterList InputConverterU::Translate(int rank, int num_proc)
         .set<bool>("contiguous global ids", false);
   }
 
+  // -- single region for fracture network
+  if (fracture_regions_.size() > 0) {
+    // std::string network = CreateUniqueName_(fracture_regions_);
+    std::string network("FRACTURE_NETWORK_INTERNAL");
+    out_list.sublist("regions").sublist(network).sublist("region: logical")
+        .set<std::string>("operation", "union")
+        .set<Teuchos::Array<std::string> >("regions", fracture_regions_);
+  }
+
   // -- final I/O
   PrintStatistics_();
 
@@ -471,6 +480,19 @@ void InputConverterU::SaveXMLFile(
     xmlfile.open(filename.c_str());
     xmlfile << XMLobj;
   }
+}
+
+
+/* ******************************************************************
+* Create a name by concatenating names in a list
+****************************************************************** */
+std::string InputConverterU::CreateUniqueName_(const Teuchos::Array<std::string>& list)
+{
+  std::string name;
+  for (auto it = list.begin(); it != list.end(); ++it) {
+    name.append(*it);
+  }
+  return name;
 }
 
 

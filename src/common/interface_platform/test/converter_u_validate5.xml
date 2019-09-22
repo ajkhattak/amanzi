@@ -48,6 +48,12 @@
         <Parameter name="high coordinate" type="Array(double)" value="{100.0,0.0,10.0}"/>
       </ParameterList>
     </ParameterList>
+    <ParameterList name="FRACTURE_NETWORK_INTERNAL">
+      <ParameterList name="region: logical">
+        <Parameter name="operation" type="string" value="union"/>
+        <Parameter name="regions" type="Array(string)" value="{fracture}"/>
+      </ParameterList>
+    </ParameterList>
   </ParameterList>
 
   <ParameterList name="mesh">
@@ -59,9 +65,11 @@
       <ParameterList name="expert">
         <Parameter name="framework" type="string" value="MSTK"/>
         <Parameter name="partitioner" type="string" value="NOT_SPECIFIED"/>
+        <Parameter name="request edges" type="bool" value="true"/>
       </ParameterList>
-      <ParameterList name="extract fracture mesh">
-        <Parameter name="regions" type="Array(string)" value="{fracture}"/>
+      <ParameterList name="submesh">
+        <Parameter name="regions" type="Array(string)" value="{FRACTURE_NETWORK_INTERNAL}"/>
+        <Parameter name="extraction method" type="string" value="manifold mesh"/>
       </ParameterList>
     </ParameterList>
     <ParameterList name="verbose object">
