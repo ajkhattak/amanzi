@@ -3133,7 +3133,7 @@ void Mesh_MSTK::get_set_entities_and_vofs(const std::string setname,
     std::string label = lsrgn->label();
     std::string entity_type = lsrgn->entity_str();
 
-    if (kind == CELL && entity_type != "FACE") {
+    if (kind == CELL && entity_type != "CELL") {
       if (verbobj.get() && verbobj->os_OK(Teuchos::VERB_MEDIUM)) {
         *(verbobj->os()) << "Found labeled set region \"" << setname 
                          << "\" but it contains entities of type " << entity_type 
@@ -3142,7 +3142,7 @@ void Mesh_MSTK::get_set_entities_and_vofs(const std::string setname,
     } 
     else {
       mset1 = MESH_MSetByName(mesh_, internal_name.c_str());
-      if (!mset1) {
+      if (!mset1 && false) {
         // Build set on a fly. This should be moved to build_set().
         int ival;
         double rval;
@@ -3163,7 +3163,7 @@ void Mesh_MSTK::get_set_entities_and_vofs(const std::string setname,
       // Due to the parallel partitioning its possible that this
       // set is not on this processor
 
-      if (!mset1) {
+      if (!mset1 && false) {
         if (comm_->NumProc() == 1) {
           Errors::Message msg;
           msg << "Could not find labeled set \"" << label 
